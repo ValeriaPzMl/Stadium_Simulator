@@ -1,0 +1,326 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{acento}{HTML}{1F4E79}
+\titleformat{\section}{\Large\bfseries\color{acento}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{acento}}{\thesubsection}{0.6em}{}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcommand{\buf}[1]{\textbf{\texttt{#1}}}
+\newcommand{\code}[1]{\texttt{#1}}
+\setlist{itemsep=2pt,topsep=4pt}
+\renewcommand{\arraystretch}{1.25}
+
+\newcommand{\proyecto}{Estadio Paralelo}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small \proyecto}
+\rhead{\small 3pf\_FirstProjectProgress}
+\cfoot{\thepage}
+
+\begin{document}
+
+% ------------------------------------------------------------------ Portada
+\begin{titlepage}
+  \centering
+  {\Large UNIVERSIDAD PANAMERICANA\par}
+  \vspace{1.2cm}
+  {\large Fundamentos de Programación en Paralelo\par}
+  \vspace{0.3cm}
+  {\large Profesor: Dr. Juan Carlos López Pimentel\par}
+  \vspace{2.5cm}
+  {\color{acento}\rule{\linewidth}{1pt}\par}
+  \vspace{0.4cm}
+  {\Huge\bfseries \proyecto\par}
+  \vspace{0.3cm}
+  {\Large Simulador distribuido de un estadio de fútbol\par}
+  \vspace{0.4cm}
+  {\color{acento}\rule{\linewidth}{1pt}\par}
+  \vspace{1.5cm}
+  {\large Evidencia: \textbf{3pf\_FirstProjectProgress}\par}
+  {\large Primer avance del proyecto final: Análisis y Diseño\par}
+  \vfill
+  {\large\bfseries Integrantes\par}
+  \vspace{0.3cm}
+  {\large Heidi Meiners Muñoz \\ Valeria Pérez Maciel \\ Fátima Sofía Walls Fernández \\ Alberto Stephen Dubin Hernández\par}
+  \vspace{1.5cm}
+  {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ------------------------------------------------------------------ 1
+\section{Descripción del proyecto}
+
+\textbf{\proyecto} es un simulador gráfico, escrito en Java, de un estadio de fútbol durante un partido. Cientos de personas llegan, pasan por la entrada, buscan su lugar, ven el partido, van al baño, compran comida y finalmente se retiran, todo al mismo tiempo. En el simulador cada una de esas personas es un \emph{agente}, es decir, un hilo de ejecución independiente con su propio comportamiento. Los agentes compiten entre sí por recursos limitados: torniquetes, cubículos de baño, porciones de comida, lugares en la escalera y asientos numerados.
+
+El objetivo del proyecto es poner en práctica los mecanismos de sincronización vistos en el curso (candados, monitores y semáforos) en un escenario cotidiano donde la concurrencia aparece de manera natural. Sin estos mecanismos, dos aficionados podrían sentarse en el mismo asiento, el mostrador de comida podría quedar con porciones negativas o más personas de las permitidas podrían entrar a un baño. El simulador permite observar estas situaciones y la manera en que se evitan, incluida la prevención de \emph{deadlock}.
+
+El estadio está dividido en tres pisos y cada piso corre en una computadora distinta, de modo que el sistema funciona en un contexto \textbf{cliente-servidor distribuido}:
+\begin{itemize}
+  \item \textbf{Planta baja (S1):} la cancha y las gradas bajas, con la única entrada del estadio, una tienda y un baño general.
+  \item \textbf{Palcos (S2):} la zona exclusiva, donde cada palco tiene baño propio y los meseros llevan la comida.
+  \item \textbf{Grada alta (S3):} la zona popular, con lugares más baratos, una tienda, un baño general y vendedores que recorren las gradas.
+\end{itemize}
+Todos los aficionados entran por la planta baja. Quien tiene boleto de palco o de grada alta sube por la escalera y, al llegar al final, su agente \emph{migra} a la computadora del piso correspondiente. Al terminar el partido hace el recorrido inverso.
+
+Un hilo especial, el \emph{reloj del partido}, marca el inicio, los goles, el medio tiempo y el final, y difunde estos eventos a los tres servidores. Los eventos modifican el comportamiento de todos los agentes. El más interesante es el medio tiempo, en el que la mayoría de los aficionados decide ir al baño o a comprar comida al mismo tiempo, lo que provoca la mayor contención sobre los recursos compartidos.
+
+Cada servidor muestra una ventana con el plano de su piso y los agentes moviéndose en tiempo real, una \textbf{tabla de estados} con el estado de cada agente (tanto el estado del dominio, por ejemplo ``en fila del baño'', como el estado real del hilo en Java: \code{RUNNABLE}, \code{BLOCKED}, \code{WAITING}, etc.) y contadores de ocupación de cada recurso. El simulador incluye sonido (silbato, grito de gol y murmullo de la multitud) y, al iniciar, permite configurar cuántos agentes de cada tipo entran a la simulación y la capacidad de cada recurso.
+
+% ------------------------------------------------------------------ 2
+\section{Agentes y sus tareas}
+
+El sistema tiene seis tipos de agentes. Cada uno es un hilo (\code{Thread}) con una máquina de estados propia; un \emph{estado} es un lugar o actividad donde el agente permanece un tiempo (por ejemplo, ``viendo el partido'') y una \emph{transición} es el paso de un estado a otro (por ejemplo, ``caminando hacia el baño''). La Tabla~\ref{tab:agentes} resume los agentes.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{>{\bfseries}l l L}
+\toprule
+Agente & Piso & Interactúa con \\
+\midrule
+Aficionado & S1 $\rightarrow$ S2/S3 & Guardia, Cocinero (mostrador), Mesero, Vendedor de gradas \\
+Guardia & S1, S2 & Aficionado \\
+Cocinero & S1, S2, S3 & Aficionado, Mesero, Vendedor de gradas (a través del mostrador) \\
+Mesero & S2 & Aficionado de palco, Cocinero \\
+Vendedor de gradas & S1, S3 & Aficionado, Cocinero \\
+Reloj del partido & S1 & Todos los agentes (por medio de eventos) \\
+\bottomrule
+\end{tabularx}
+\caption{Tipos de agentes del sistema.}
+\label{tab:agentes}
+\end{table}
+
+\subsection{Aficionado}
+Es el agente principal y el único que cambia de computadora. Llega con un boleto de tipo \emph{General}, \emph{Palco} o \emph{Popular} (algunos pueden ser falsos) y tiene niveles de hambre y de vejiga que aumentan con el tiempo.
+\begin{itemize}
+  \item Camina a la entrada, se forma en la fila del torniquete y espera a que un guardia revise su boleto. Si es inválido, es expulsado.
+  \item Según su boleto, va a su asiento en la planta baja o sube la escalera y migra al servidor de palcos o de grada alta.
+  \item Busca y ocupa su asiento numerado y se queda viendo el partido.
+  \item Cada cierto tiempo decide qué hacer: seguir viendo, ir al baño, ir a la tienda (pagar en caja y tomar una porción del mostrador), llamar al vendedor de gradas, pedir comida al mesero (solo en palcos) o salir. Cuando hay un gol, celebra.
+  \item Al terminar el partido, baja la escalera, migra de regreso a la planta baja y sale del estadio.
+\end{itemize}
+
+\subsection{Guardia}
+Trabaja en los torniquetes de la entrada (S1) y en el acceso a los palcos (S2).
+\begin{itemize}
+  \item Espera en su puesto a que llegue un aficionado. Si pasa un tiempo sin que nadie llegue, pasa a su zona de decisión.
+  \item Cuando llega un aficionado, revisa su boleto: si es válido y de la zona correcta le permite el paso; de lo contrario lo rechaza.
+  \item En la zona de decisión elige seguir en su puesto, tomar un descanso o retirarse cuando termina el partido y ya no hay aficionados en la entrada.
+\end{itemize}
+
+\subsection{Cocinero}
+Es el \emph{productor} de la comida. Hay cocineros en las tiendas de S1 y S3 y en la cocina de palcos de S2.
+\begin{itemize}
+  \item Prepara una porción de comida (actividad con duración).
+  \item Coloca la porción en el mostrador. Si el mostrador está lleno, espera hasta que algún consumidor tome una porción.
+  \item Al colocarla, notifica a los consumidores que esperaban comida.
+  \item Decide si sigue cocinando, toma un descanso o se retira al final del partido.
+\end{itemize}
+
+\subsection{Mesero}
+Atiende los pedidos de los palcos (S2).
+\begin{itemize}
+  \item Espera pedidos en la cocina de palcos; cuando llega uno, lo toma de la cola de pedidos.
+  \item Toma una bandeja, recoge la comida del mostrador de la cocina y sube en el montacargas al nivel de los palcos.
+  \item Entrega el pedido al aficionado, le avisa que ya llegó su comida, baja, libera el montacargas y devuelve la bandeja.
+  \item Decide si sigue atendiendo, descansa o se retira cuando termina el partido y no quedan pedidos.
+\end{itemize}
+
+\subsection{Vendedor de gradas}
+Recorre las gradas de S1 y S3 vendiendo comida.
+\begin{itemize}
+  \item Va a la tienda y llena su charola tomando porciones del mostrador (compite con los aficionados que compran ahí).
+  \item Recorre las gradas esperando llamados de los aficionados. Cuando alguien lo llama, camina a su asiento y le vende.
+  \item Si la charola se vacía regresa a la tienda a recargar; si no, sigue recorriendo las gradas o descansa.
+\end{itemize}
+
+\subsection{Reloj del partido}
+Es un agente que no se desplaza, pero coordina a todos los demás.
+\begin{itemize}
+  \item Espera a que el estadio se llene y emite el evento de \textbf{inicio}.
+  \item Simula el partido minuto a minuto; en cada minuto puede ocurrir un \textbf{gol} de forma aleatoria.
+  \item Al terminar el primer tiempo emite el \textbf{medio tiempo}, espera el descanso y comienza el segundo tiempo.
+  \item Al terminar emite el \textbf{fin del partido}. Cada evento se difunde a los tres servidores.
+\end{itemize}
+
+% ------------------------------------------------------------------ 3
+\section{Secciones críticas y zonas críticas}
+
+Llamamos \textbf{sección crítica (búfer 1)} a un recurso que solo puede ser usado por un agente a la vez, y \textbf{zona crítica (búfer $>$ 1)} a un recurso con varias unidades que pueden usarse simultáneamente hasta una capacidad máxima. A cada búfer se le asignó una letra, que es la misma que aparece en los diagramas BPMN (con apóstrofo, por ejemplo \buf{T'}, cuando el recurso se libera).
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{c l c c L}
+\toprule
+Letra & Búfer & Piso & Capacidad & Mecanismo en Java \\
+\midrule
+\buf{Bp} & Baño de palco & S2 & 1 & \code{ReentrantLock} / \code{synchronized} \\
+\buf{Mc} & Montacargas & S2 & 1 & \code{ReentrantLock} \\
+\buf{A}  & Asiento numerado & S1, S3 & 1 por asiento & \code{synchronized} sobre cada asiento \\
+\midrule
+\buf{T}  & Torniquetes & S1 & $T$ & \code{Semaphore(T, true)} \\
+\buf{Bg} & Baño general (cubículos) & S1, S3 & $N$ & \code{Semaphore(N, true)} \\
+\buf{Cj} & Cajas de cobro & S1, S3 & $C$ & \code{Semaphore(C)} \\
+\buf{Bj} & Bandejas de meseros & S2 & $B$ & \code{Semaphore(B)} \\
+\buf{E}  & Escalera (un sentido a la vez) & S1$\leftrightarrow$S2/S3 & $E$ & Monitor: \code{ReentrantLock} + \code{Condition} \\
+\buf{M}  & Mostrador de comida & S1, S2, S3 & $K$ porciones & Monitor: \code{synchronized} + \code{wait()/notifyAll()} \\
+\buf{Pd} & Cola de pedidos de palco & S2 & $P$ & Monitor (productor-consumidor) \\
+\buf{Ll} & Cola de llamados al vendedor & S1, S3 & $L$ & Monitor (productor-consumidor) \\
+\bottomrule
+\end{tabularx}
+\caption{Búferes del sistema. Las capacidades $T, N, C, B, E, K, P, L$ se configuran al iniciar.}
+\label{tab:buferes}
+\end{table}
+
+\subsection{Secciones críticas (búfer 1)}
+\begin{itemize}
+  \item \textbf{Baño de palco (\buf{Bp}).} Cada palco tiene un solo baño. El aficionado adquiere el candado del baño de su palco; si otro aficionado lo está usando, queda bloqueado hasta que el primero lo libere. Esto garantiza exclusión mutua.
+  \item \textbf{Montacargas (\buf{Mc}).} Solo un mesero puede usarlo a la vez para subir los pedidos al nivel de los palcos.
+  \item \textbf{Asientos numerados (\buf{A}).} Cada asiento es un objeto con estado libre u ocupado. Ocuparlo es un método \code{synchronized}: si dos aficionados con el mismo número de asiento (boleto duplicado) llegan al mismo tiempo, solo uno lo consigue y el otro es atendido como un caso de boleto inválido.
+\end{itemize}
+
+\subsection{Zonas críticas (búfer $>$ 1)}
+\begin{itemize}
+  \item \textbf{Torniquetes (\buf{T}).} Un semáforo con $T$ permisos limita cuántos aficionados pueden estar en revisión al mismo tiempo. Dentro del torniquete ocurre una \emph{cita} entre el aficionado y el guardia: el aficionado avisa que llegó y espera el veredicto; el guardia espera a que llegue un aficionado, revisa el boleto y le comunica el resultado. Esta cita se implementa con un par de semáforos.
+  \item \textbf{Baños generales (\buf{Bg}).} Un semáforo justo (\emph{fair}) con $N$ permisos, uno por cubículo. Quien llega cuando todos están ocupados espera su turno en orden de llegada.
+  \item \textbf{Cajas (\buf{Cj}) y bandejas (\buf{Bj}).} Semáforos contadores con $C$ y $B$ permisos respectivamente.
+  \item \textbf{Escalera (\buf{E}).} Admite hasta $E$ personas, pero solo en un sentido a la vez (como un puente de un carril). Se implementa como monitor con un candado y dos condiciones (\code{puedeSubir}, \code{puedeBajar}). Para evitar inanición, después de que cierto número de personas pasa en un sentido se da preferencia al sentido contrario.
+  \item \textbf{Mostrador de comida (\buf{M}).} Es el problema clásico de \textbf{productor-consumidor} con búfer acotado de $K$ porciones. Los cocineros producen; los aficionados, los vendedores de gradas y los meseros consumen. Se implementa como un monitor propio: si el mostrador está lleno el cocinero hace \code{wait()}, si está vacío el consumidor hace \code{wait()}, y cada operación termina con \code{notifyAll()}.
+  \item \textbf{Cola de pedidos (\buf{Pd}) y cola de llamados (\buf{Ll}).} También son productor-consumidor: los aficionados producen pedidos o llamados y los meseros o vendedores los consumen. Así se garantiza que cada pedido se atienda exactamente una vez.
+\end{itemize}
+
+\subsection{Prevención de deadlock}
+El mesero es el único agente que necesita dos recursos a la vez: una bandeja (\buf{Bj}) y el montacargas (\buf{Mc}). Si un mesero tomara primero el montacargas y otro primero la bandeja, podrían quedar esperándose mutuamente para siempre (espera circular). Para evitarlo, \textbf{todos los meseros adquieren los recursos en el mismo orden}: primero la bandeja y después el montacargas, y los liberan en orden inverso. Al eliminar la espera circular, el deadlock no puede ocurrir. El simulador tendrá un modo de demostración que invierte el orden en la mitad de los meseros para mostrar el problema y compararlo con la solución.
+
+\subsection{Resumen de secciones críticas}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{c l L}
+\toprule
+\# & Sección crítica & Qué pasaría sin protección \\
+\midrule
+1 & Entrar a un torniquete & Más de $T$ personas en revisión a la vez \\
+2 & Revisar un boleto (cita) & Dos guardias revisan al mismo aficionado o uno revisa a dos a la vez \\
+3 & Subir o bajar la escalera & Personas en ambos sentidos; más de $E$ en la escalera \\
+4 & Ocupar un asiento & Dos aficionados en el mismo lugar \\
+5 & Usar el baño general & Más de $N$ personas en el baño \\
+6 & Usar el baño del palco & Dos personas en el mismo baño \\
+7 & Poner o tomar del mostrador & Porciones negativas, más de $K$, o comida duplicada \\
+8 & Pagar en caja & Más de $C$ cobros simultáneos \\
+9 & Encolar o tomar un pedido & Pedidos perdidos o entregados dos veces \\
+10 & Encolar o tomar un llamado & Dos vendedores atienden al mismo aficionado \\
+11 & Usar bandeja y montacargas & Deadlock entre meseros \\
+12 & Actualizar contadores de la interfaz & Contadores incorrectos o errores al dibujar \\
+\bottomrule
+\end{tabularx}
+\caption{Secciones críticas identificadas.}
+\end{table}
+
+% ------------------------------------------------------------------ 4
+\section{Contexto distribuido}
+
+El sistema se ejecuta en \textbf{tres computadoras}, una por piso del estadio (Figura~\ref{fig:distribuido}). Las tres corren el mismo programa y se distinguen por los argumentos de inicio (\code{--piso}, \code{--puerto} y \code{--vecinos}). Cada servidor administra sus propios recursos y agentes, tiene su propia ventana gráfica y su propia tabla de estados, y se comunica con los demás mediante \textbf{sockets TCP}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  srv/.style={draw, rounded corners, thick, minimum width=4.2cm, minimum height=2.4cm, align=center, fill=acento!6},
+  flecha/.style={-{Latex[length=3mm]}, thick},
+  font=\small]
+  \node[srv] (s2) {\textbf{S2 -- Palcos}\\[2pt]Guardia, Mesero, Cocinero\\Baños \buf{Bp}, \buf{Mc}, \buf{Bj}, \buf{M}, \buf{Pd}};
+  \node[srv, below left=1.6cm and 0.4cm of s2] (s1) {\textbf{S1 -- Planta baja}\\[2pt]Entrada \buf{T}, \buf{A}, \buf{Bg}\\Tienda \buf{M}, \buf{Cj}, \buf{Ll}\\Reloj del partido};
+  \node[srv, below right=1.6cm and 0.4cm of s2] (s3) {\textbf{S3 -- Grada alta}\\[2pt]\buf{A}, \buf{Bg}\\Tienda \buf{M}, \buf{Cj}, \buf{Ll}};
+  \draw[flecha] ([xshift=-6mm]s1.north) to[bend left=15] node[left, align=right] {Aficionado sube\\(\code{AgenteDTO})} ([xshift=-6mm]s2.south);
+  \draw[flecha] ([xshift=6mm]s2.south) to[bend left=15] node[right, align=left, pos=0.6] {baja} ([xshift=6mm]s1.north);
+  \draw[flecha] ([yshift=4mm]s1.east) -- node[above] {Aficionado sube} ([yshift=4mm]s3.west);
+  \draw[flecha] ([yshift=-4mm]s3.west) -- node[below] {baja} ([yshift=-4mm]s1.east);
+  \draw[flecha, dashed] (s1.south) to[bend right=20] node[below] {Eventos del partido: inicio, gol, medio tiempo, fin} (s3.south);
+\end{tikzpicture}
+\caption{Distribución del estadio en tres servidores. Las flechas continuas son migraciones de agentes; la punteada es la difusión de eventos (también llega a S2).}
+\label{fig:distribuido}
+\end{figure}
+
+\subsection{Migración de agentes}
+El agente que cambia de computadora es el \textbf{aficionado}. La entrada al estadio solo existe en la planta baja, por lo que todos los aficionados nacen en S1. Cuando un aficionado con boleto de palco o de grada alta termina de subir la escalera:
+\begin{enumerate}
+  \item Su hilo guarda su estado en un objeto serializable \code{AgenteDTO} (identificador, tipo de boleto, número de asiento, niveles de hambre y vejiga, estado actual).
+  \item Abre una conexión con el servidor destino y envía el objeto con un \code{ObjectOutputStream}.
+  \item El hilo local termina (estado \code{TERMINATED}) y el aficionado desaparece de la pantalla de S1.
+  \item En el servidor destino, un hilo dedicado (\code{ServidorRed}) espera conexiones con \code{accept()}. Al recibir el objeto, crea un nuevo hilo de aficionado con ese estado y lo inicia; el aficionado aparece en la pantalla del nuevo piso y continúa su comportamiento.
+\end{enumerate}
+Al terminar el partido, el aficionado baja la escalera y migra de la misma forma de regreso a S1 para salir del estadio. En S2, al llegar, pasa además por el guardia del acceso a palcos.
+
+\subsection{Difusión de eventos}
+El reloj del partido vive en S1. Cada vez que ocurre un evento (inicio, gol, medio tiempo o fin), S1 envía un mensaje de tipo \code{EVENTO} a S2 y S3. El hilo \code{ServidorRed} de cada piso lo recibe, notifica a sus agentes locales y reproduce el sonido correspondiente. Así, por ejemplo, en el medio tiempo los aficionados de los tres pisos reaccionan al mismo tiempo.
+
+\subsection{Protocolo}
+Todos los mensajes entre servidores son objetos \code{Mensaje} con dos tipos: \code{AGENTE}, que lleva un \code{AgenteDTO}, y \code{EVENTO}, que lleva el tipo de evento y el marcador. Para validar el sistema se comprobará que la suma de aficionados en los tres pisos sea siempre igual al número de aficionados que entraron menos los que salieron, es decir, que ningún agente se pierda al migrar.
+
+% ------------------------------------------------------------------ 5
+\section{Estados de los agentes y estados de los hilos}
+
+Es importante distinguir dos conceptos:
+\begin{itemize}
+  \item El \textbf{estado del agente} describe lo que la persona está haciendo en el estadio (por ejemplo, \emph{viendo el partido}, \emph{en fila del baño}, \emph{comiendo}). Estos estados y sus transiciones son los que se modelan en los diagramas BPMN.
+  \item El \textbf{estado del hilo} es el que reporta la máquina virtual de Java mediante \code{Thread.getState()}.
+\end{itemize}
+La tabla de estados del simulador mostrará ambos para cada agente, de forma que se pueda ver, por ejemplo, que un aficionado \emph{en fila del baño} tiene su hilo en estado \code{WAITING}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{l L}
+\toprule
+Estado del hilo & Cuándo se observa en el simulador \\
+\midrule
+\code{NEW} & Agente creado que aún no inicia, incluido el que se acaba de recrear tras migrar \\
+\code{RUNNABLE} & Caminando, preparando comida, revisando un boleto \\
+\code{BLOCKED} & Esperando entrar a un método \code{synchronized} (asiento, mostrador) \\
+\code{WAITING} & En \code{wait()} del mostrador, \code{acquire()} de un semáforo o \code{await()} de la escalera \\
+\code{TIMED\_WAITING} & Viendo el partido, usando el baño o descansando (\code{sleep}); esperas con límite de tiempo \\
+\code{TERMINATED} & Agente que salió del estadio o que migró a otro servidor \\
+\bottomrule
+\end{tabularx}
+\caption{Estados de un hilo en Java y su significado en el simulador.}
+\end{table}
+
+% ------------------------------------------------------------------ 6
+\section{Diagramas BPMN}
+
+Los diagramas BPMN de cada agente se entregan en un documento aparte (\emph{Diagramas BPMN -- \proyecto}), con un diagrama por página para que sean legibles. Se incluyen:
+\begin{enumerate}[label=\arabic*.]
+  \item Sistema general (programa principal de cada servidor).
+  \item Aficionado.
+  \item Guardia.
+  \item Cocinero.
+  \item Mesero.
+  \item Vendedor de gradas.
+  \item Reloj del partido.
+  \item Hilo de red y migración de agentes.
+\end{enumerate}
+En los diagramas se marcan los búferes con la letra de la Tabla~\ref{tab:buferes}. Los pasos de migración (``Migrar a S2/S3'' y ``Migrar a S1'') y el diagrama del hilo de red muestran el contexto distribuido.
+
+\end{document}

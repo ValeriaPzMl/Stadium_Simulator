@@ -1,0 +1,104 @@
+\documentclass[11pt,letterpaper,landscape]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage[landscape,margin=0.8cm,top=0.9cm,bottom=0.9cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{acento}{HTML}{1F4E79}
+\pagestyle{empty}
+\newcommand{\proyecto}{Estadio Paralelo}
+\renewcommand{\arraystretch}{1.3}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% Un diagrama por página, lo más grande posible
+\newcommand{\diagrama}[3]{%
+  \newpage
+  \noindent{\large\bfseries\color{acento}#1}\hfill{\small #2}\par
+  \vspace{2mm}
+  \noindent{\color{acento}\rule{\linewidth}{0.6pt}}\par
+  \vfill
+  \begin{center}
+    \includegraphics[width=\linewidth,height=0.86\textheight,keepaspectratio]{figuras/#3}
+  \end{center}
+  \vfill
+}
+
+\begin{document}
+
+% ------------------------------------------------------------------ Portada y simbología
+\begin{center}
+  {\small UNIVERSIDAD PANAMERICANA \quad·\quad Fundamentos de Programación en Paralelo \quad·\quad Dr. Juan Carlos López Pimentel}\\[3mm]
+  {\Huge\bfseries\color{acento} Diagramas BPMN -- \proyecto}\\[2mm]
+  {\large Evidencia 3pf\_FirstProjectProgress \quad·\quad Integrantes: Heidi Meiners Muñoz, Valeria Pérez Maciel, Fátima Sofía Walls Fernández, Alberto Stephen Dubin Hernández}
+\end{center}
+\vspace{4mm}
+
+\noindent
+\begin{minipage}[t]{0.42\linewidth}
+\textbf{\large Simbología}\\[2mm]
+\begin{tikzpicture}[x=1cm,y=-1.05cm,font=\small]
+  \draw[thick] (0,0) circle (0.25); \node[right] at (0.6,0) {Inicio del agente};
+  \fill (0,1) circle (0.25); \draw[line width=2pt] (0,1) circle (0.25); \node[right] at (0.6,1) {Fin del agente};
+  \draw[thick,rounded corners] (-0.5,1.7) rectangle (0.5,2.3); \node[right] at (0.6,2) {Transición (caminar, migrar, revisar\dots)};
+  \draw[thick,dashed,rounded corners] (-0.5,2.7) rectangle (0.5,3.3); \draw (0.35,2.85) circle (0.09);
+  \node[right] at (0.6,3) {Estado con duración (viendo el partido, en el baño\dots)};
+  \draw[thick] (0,3.7) -- (0.3,4) -- (0,4.3) -- (-0.3,4) -- cycle; \node[right] at (0.6,4) {Decisión (compuerta exclusiva)};
+  \draw[thick] (0,4.7) -- (0.3,5) -- (0,5.3) -- (-0.3,5) -- cycle;
+  \draw[line width=2pt] (-0.14,5) -- (0.14,5) (0,4.86) -- (0,5.14); \node[right] at (0.6,5) {Ejecución en paralelo};
+  \draw (0,6) circle (0.22); \draw (0,6) circle (0.17); \draw (0,6) circle (0.1);
+  \node[right] at (0.6,6) {Temporizador (pasa un tiempo sin eventos)};
+  \draw (0,7) circle (0.22); \draw (0,7) circle (0.17); \draw (0,6.9) -- (0.09,7.07) -- (-0.09,7.07) -- cycle;
+  \node[right] at (0.6,7) {Señal / evento recibido};
+  \draw (0,8) circle (0.22); \draw (0,8) circle (0.17); \draw (-0.07,7.92) -- (0.07,7.92) (-0.07,8) -- (0.07,8) (-0.07,8.08) -- (0.07,8.08);
+  \node[left] at (-0.25,8) {\textbf{X}}; \node[right] at (0.6,8) {Acceso a búfer \textbf{X} (\textbf{X'} = liberar)};
+  \draw[dashed,-{>[open]}] (-0.4,9) -- (0.4,9); \draw (-0.4,9) circle (0.06); \node[right] at (0.6,9) {Mensaje entre servidores (socket TCP)};
+\end{tikzpicture}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.55\linewidth}
+\textbf{\large Búferes}\\[2mm]
+\small
+\begin{tabularx}{\linewidth}{c l c L}
+\toprule
+Letra & Búfer & Cap. & Tipo \\
+\midrule
+\textbf{Bp} & Baño de palco (S2) & 1 & Sección crítica (búfer 1) \\
+\textbf{Mc} & Montacargas (S2) & 1 & Sección crítica (búfer 1) \\
+\textbf{A} & Asiento numerado & 1 c/u & Sección crítica (búfer 1) \\
+\textbf{T} & Torniquetes (S1) & $T$ & Zona crítica (búfer $>$ 1) \\
+\textbf{Bg} & Baño general (S1, S3) & $N$ & Zona crítica (búfer $>$ 1) \\
+\textbf{Cj} & Cajas de cobro & $C$ & Zona crítica (búfer $>$ 1) \\
+\textbf{Bj} & Bandejas de meseros (S2) & $B$ & Zona crítica (búfer $>$ 1) \\
+\textbf{E} & Escalera (un sentido a la vez) & $E$ & Zona crítica con condición \\
+\textbf{M} & Mostrador de comida & $K$ & Productor-consumidor \\
+\textbf{Pd} & Cola de pedidos de palco & $P$ & Productor-consumidor \\
+\textbf{Ll} & Cola de llamados al vendedor & $L$ & Productor-consumidor \\
+\textbf{G}, \textbf{C} & Guardias / aficionados en el estadio & -- & Conteo de agentes \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4mm}
+\textbf{\large Contexto distribuido}\\[1mm]
+S1 = Planta baja (entrada, reloj del partido) \quad S2 = Palcos \quad S3 = Grada alta.\\
+Los pasos \emph{``Migrar a S2/S3''} y \emph{``Migrar a S1''} del Aficionado son el cambio de computadora; el detalle está en el diagrama 8 (hilo de red).
+\end{minipage}
+
+% ------------------------------------------------------------------ Diagramas
+\diagrama{1. Sistema general}{Programa principal de cada servidor (S1, S2, S3)}{00_sistema_general.pdf}
+\diagrama{2. Aficionado}{S1 $\rightarrow$ S2 / S3 $\rightarrow$ S1 \quad (agente que migra)}{01_aficionado.pdf}
+\diagrama{3. Guardia}{Entrada S1 y acceso a palcos S2}{02_guardia.pdf}
+\diagrama{4. Cocinero}{Tiendas S1 y S3, cocina de palcos S2 \quad (productor)}{03_cocinero.pdf}
+\diagrama{5. Mesero}{S2 -- Palcos \quad (prevención de deadlock)}{04_mesero.pdf}
+\diagrama{6. Vendedor de gradas}{S1 y S3}{05_vendedor_gradas.pdf}
+\diagrama{7. Reloj del partido}{S1 \quad (difunde eventos a S2 y S3)}{06_reloj_partido.pdf}
+\diagrama{8. Hilo de red y migración de agentes}{Contexto distribuido: servidor origen $\rightarrow$ servidor destino}{07_servidor_red.pdf}
+
+\end{document}
