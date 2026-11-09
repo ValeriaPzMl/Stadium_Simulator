@@ -77,6 +77,8 @@ src/estadio/
 resources/sonidos/*.wav, resources/img/*.png
 ```
 
+**Compilación:** sin Maven ni Gradle. Un script `build.sh` compila con `javac --release 17` y empaqueta `estadio.jar` con `jar`. La JDK de desarrollo es la 27-ea; con `--release 17` el jar también corre en computadoras con Java 17 o más nuevo.
+
 ## 6. Scope por entregas
 
 **Entrega 1 – Análisis y diseño (sin código)** → `entrega1/`
@@ -103,3 +105,42 @@ resources/sonidos/*.wav, resources/img/*.png
 - Invariantes con asserts/logs: ocupación de baño ≤ N, baño de palco ≤ 1, porciones en mostrador ∈ [0, K], nadie se sienta en un asiento ocupado, la escalera nunca tiene gente en ambos sentidos.
 - Modo deadlock ON → meseros trabados; OFF → nunca se traba (correr varios minutos con muchos agentes).
 - Agentes totales sumando los 3 servidores = agentes creados − agentes que salieron (ninguno se pierde en la migración).
+
+## 8. Plan de acción por fases
+
+El trabajo se divide en fases pequeñas, y cada una termina con algo que se puede ejecutar y comprobar.
+
+**Reglas de trabajo**
+- No se pasa a la siguiente fase hasta que la **prueba de cierre** de la fase actual funcione.
+- Al cerrar cada fase se hace un commit con el título `Fase N: ...`.
+- Si una fase se complica, se parte en dos antes que dejarla a medias.
+
+| Fase | Objetivo | Qué se construye | Prueba de cierre |
+|---|---|---|---|
+| **0. Esqueleto** | Que compile y abra | Paquetes de la sección 5, `build.sh`, `Main` que lee `--piso/--puerto/--vecinos` y abre una ventana Swing vacía con el nombre del piso | `./build.sh && java -jar estadio.jar --piso=1` abre la ventana "S1 – Planta baja" |
+| **1. Agentes y tabla de estados** | Base de todos los agentes | `Agente` abstracto (estado del dominio, x/y, piso), registro concurrente de agentes, `PanelPiso` que dibuja círculos, `TablaEstados` con `Thread.getState()` refrescada por un `javax.swing.Timer`; agentes de prueba que caminan y duermen | N agentes moviéndose; la tabla muestra `RUNNABLE`/`TIMED_WAITING` y `TERMINATED` al terminar |
+| **2. Entrada de S1** | Primer semáforo y primera cita | `Torniquetes` (Semaphore T), cita guardia↔aficionado (2 semáforos), `Guardia`, `Aficionado` hasta su asiento, `Asientos` (`synchronized`), boletos falsos | Con T=2 nunca hay más de 2 en revisión (contador + aserción en el log); los rechazados salen; nunca dos aficionados en el mismo asiento |
+| **3. Baño y tienda de S1** | Zona crítica y productor-consumidor | `BanoGeneral` (Semaphore N), `Mostrador` (monitor con wait/notifyAll), `Cajas`, `Cocinero`, zona de decisión del aficionado | Porciones del mostrador siempre en [0, K]; con 0 cocineros los aficionados aparecen en `WAITING`; el baño nunca pasa de N |
+| **4. Red mínima y migración** | Primer cambio de computadora | `Mensaje`, `AgenteDTO`, hilo `ServidorRed`, `ConexionVecino`, escalera simple; un aficionado Popular pasa de S1 a S3 | En 3 terminales locales el aficionado desaparece de S1 y aparece en S3; aficionados en S1 + en S3 = los que entraron |
+| **5. Grada alta (S3) completa** | Segundo piso funcional y regreso | Baño y tienda en S3, `VendedorGradas`, `ColaLlamados`, regreso a S1 para salir | Ciclo completo S1→S3→S1→salida; cada llamado lo atiende un solo vendedor |
+| **6. Palcos (S2)** | Búfer 1 y deadlock | Guardia de palcos, `BanoPalco` (lock), `ColaPedidos`, `Mesero` con bandeja + montacargas en orden fijo, switch de "modo deadlock" | Con modo deadlock ON los meseros se traban (WAITING permanente en la tabla); con OFF corre varios minutos sin trabarse |
+| **7. Partido y escalera real** | Eventos distribuidos | `RelojPartido`, difusión de eventos por red, `Escalera` como monitor de un sentido con `Condition` y anti-inanición | Gol y medio tiempo llegan a los 3 pisos; en el medio tiempo se ve el pico de `WAITING`; la escalera nunca tiene gente en ambos sentidos |
+| **8. Presentación** | Lo que se ve y se oye | `DialogoConfig` (JSpinner), `Sonido` (.wav), sprites o iconos, `PanelContadores`, colores por estado en la tabla | Cambiar la configuración cambia la simulación; se escucha el silbato, el gol y la multitud |
+| **9. Prueba final** | Listo para entregar | Prueba en 3 PCs reales, prueba de estrés (muchos agentes), reporte final y ensayo de la exposición | Pasa el checklist de requisitos del profesor |
+
+- **Entrega 2 (avance de programación):** fases 0 a 4. Ya tiene S1 funcionando y una migración real.
+- **Entrega final:** fases 5 a 9.
+
+### Requisitos del profesor → fase
+
+| Requisito (`Descripcion/01_finalProject.pdf`) | Fase |
+|---|---|
+| Simulador con gráficos, varios agentes concurrentes | 1–3 |
+| Comportamiento propio + interacción entre agentes | 2, 3, 5, 6 |
+| Tabla de estados | 1 |
+| Sección crítica búfer 1 | 2 (asiento), 6 (baño de palco, montacargas) |
+| Zonas críticas búfer > 1 | 2, 3, 7 |
+| Evitar deadlock | 6 |
+| Cliente-servidor, agentes cambian de computadora | 4, 5, 7 |
+| Sonido | 8 |
+| Especificar cuántos agentes entran | 8 (antes de eso, por argumentos de línea de comandos) |

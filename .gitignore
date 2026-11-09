@@ -1,0 +1,14 @@
+# Compilación de Java
+build/
+*.class
+estadio.jar
+
+# Auxiliares de LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
+# Documentos de  descripcion de requesistos
+Descripcion/
