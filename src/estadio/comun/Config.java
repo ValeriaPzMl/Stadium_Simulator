@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Configuración de un servidor, leída de la línea de comandos:
- * {@code --piso=1 --puerto=5001 --vecinos=host2:5002,host3:5003}
+ * {@code --piso=1 --puerto=5001 --vecinos=host2:5002,host3:5003 --prueba=10}
  */
 public final class Config {
 
@@ -21,17 +21,20 @@ public final class Config {
     private final Piso piso;
     private final int puerto;
     private final List<Vecino> vecinos;
+    private final int agentesPrueba;
 
-    private Config(Piso piso, int puerto, List<Vecino> vecinos) {
+    private Config(Piso piso, int puerto, List<Vecino> vecinos, int agentesPrueba) {
         this.piso = piso;
         this.puerto = puerto;
         this.vecinos = Collections.unmodifiableList(vecinos);
+        this.agentesPrueba = agentesPrueba;
     }
 
     public static Config desdeArgumentos(String[] args) {
         Piso piso = Piso.PLANTA_BAJA;
         Integer puerto = null;
         List<Vecino> vecinos = new ArrayList<>();
+        int agentesPrueba = 0;
 
         for (String arg : args) {
             if (arg.startsWith("--piso=")) {
@@ -40,12 +43,14 @@ public final class Config {
                 puerto = entero(arg, "--puerto=");
             } else if (arg.startsWith("--vecinos=")) {
                 vecinos = leerVecinos(arg.substring("--vecinos=".length()));
+            } else if (arg.startsWith("--prueba=")) {
+                agentesPrueba = entero(arg, "--prueba=");
             } else {
                 throw new IllegalArgumentException("Argumento desconocido: " + arg);
             }
         }
         // Por defecto cada piso escucha en 5000 + número de piso
-        return new Config(piso, puerto != null ? puerto : 5000 + piso.getNumero(), vecinos);
+        return new Config(piso, puerto != null ? puerto : 5000 + piso.getNumero(), vecinos, agentesPrueba);
     }
 
     private static int entero(String arg, String prefijo) {
@@ -82,6 +87,11 @@ public final class Config {
 
     public List<Vecino> getVecinos() {
         return vecinos;
+    }
+
+    /** Agentes de prueba de la Fase 1 (temporal, hasta que existan los agentes reales). */
+    public int getAgentesPrueba() {
+        return agentesPrueba;
     }
 
     @Override
