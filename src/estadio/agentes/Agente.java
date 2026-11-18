@@ -1,5 +1,7 @@
 package estadio.agentes;
 
+import estadio.comun.Tiempo;
+
 import java.awt.Color;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -65,19 +67,23 @@ public abstract class Agente extends Thread {
         estado = nuevo;
     }
 
-    /** Camina en línea recta hasta (destinoX, destinoY), un paso cada {@value #MS_POR_PASO} ms. */
+    /**
+     * Camina en línea recta hasta (destinoX, destinoY), un paso cada {@value #MS_POR_PASO} ms.
+     * Con {@code --velocidad} mayor a 1 los pasos son más largos, no más frecuentes.
+     */
     protected void caminarHacia(double destinoX, double destinoY) throws InterruptedException {
+        double paso = PIXELES_POR_PASO * Tiempo.getFactor();
         while (true) {
             double dx = destinoX - x;
             double dy = destinoY - y;
             double distancia = Math.hypot(dx, dy);
-            if (distancia <= PIXELES_POR_PASO) {
+            if (distancia <= paso) {
                 x = destinoX;
                 y = destinoY;
                 return;
             }
-            x += dx / distancia * PIXELES_POR_PASO;
-            y += dy / distancia * PIXELES_POR_PASO;
+            x += dx / distancia * paso;
+            y += dy / distancia * paso;
             Thread.sleep(MS_POR_PASO);
         }
     }

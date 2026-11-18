@@ -22,7 +22,7 @@ public class VentanaPiso extends JFrame {
     /** La tabla no necesita refrescarse tan seguido. */
     private static final int MS_TABLA = 200;
 
-    public VentanaPiso(Config config, RegistroAgentes registro) {
+    public VentanaPiso(Config config, RegistroAgentes registro, PanelPiso.Fondo fondo) {
         super("Estadio Paralelo – " + config.getPiso().getNombre());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -31,7 +31,7 @@ public class VentanaPiso extends JFrame {
         titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 16f));
         titulo.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
 
-        PanelPiso panel = new PanelPiso(registro);
+        PanelPiso panel = new PanelPiso(registro, fondo);
         TablaEstados tabla = new TablaEstados(registro);
         JScrollPane scrollTabla = new JScrollPane(tabla);
         scrollTabla.setPreferredSize(new Dimension(420, 600));

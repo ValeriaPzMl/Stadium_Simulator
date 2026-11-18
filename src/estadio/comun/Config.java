@@ -2,11 +2,14 @@ package estadio.comun;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Configuración de un servidor, leída de la línea de comandos:
- * {@code --piso=1 --puerto=5001 --vecinos=host2:5002,host3:5003 --prueba=10}
+ * Configuración de un servidor, leída de la línea de comandos. Ejemplo:
+ * {@code --piso=1 --puerto=5001 --vecinos=host2:5002,host3:5003 --aficionados=40 --torniquetes=2}
  */
 public final class Config {
 
@@ -18,47 +21,82 @@ public final class Config {
         }
     }
 
+    private static final Set<String> OPCIONES = Set.of(
+            "piso", "puerto", "vecinos", "aficionados", "guardias", "torniquetes",
+            "falsos", "duplicados", "velocidad");
+
+    public static final String USO = "Uso: java -jar estadio.jar --piso=<1|2|3> [--puerto=<n>] "
+            + "[--vecinos=host:puerto,...] [--aficionados=40] [--guardias=2] [--torniquetes=2] "
+            + "[--falsos=10] [--duplicados=5] [--velocidad=1.0]";
+
     private final Piso piso;
     private final int puerto;
     private final List<Vecino> vecinos;
-    private final int agentesPrueba;
+    private final int aficionados;
+    private final int guardias;
+    private final int torniquetes;
+    private final int porcentajeFalsos;
+    private final int porcentajeDuplicados;
+    private final double velocidad;
 
-    private Config(Piso piso, int puerto, List<Vecino> vecinos, int agentesPrueba) {
-        this.piso = piso;
-        this.puerto = puerto;
-        this.vecinos = Collections.unmodifiableList(vecinos);
-        this.agentesPrueba = agentesPrueba;
+    private Config(Map<String, String> opciones) {
+        piso = Piso.deNumero(entero(opciones, "piso", 1, 1, 3));
+        puerto = entero(opciones, "puerto", 5000 + piso.getNumero(), 1, 65535);
+        vecinos = Collections.unmodifiableList(leerVecinos(opciones.getOrDefault("vecinos", "")));
+        aficionados = entero(opciones, "aficionados", 40, 0, 1000);
+        guardias = entero(opciones, "guardias", 2, 0, 50);
+        torniquetes = entero(opciones, "torniquetes", 2, 1, 10);
+        porcentajeFalsos = entero(opciones, "falsos", 10, 0, 100);
+        porcentajeDuplicados = entero(opciones, "duplicados", 5, 0, 100 - porcentajeFalsos);
+        velocidad = decimal(opciones, "velocidad", 1.0);
     }
 
     public static Config desdeArgumentos(String[] args) {
-        Piso piso = Piso.PLANTA_BAJA;
-        Integer puerto = null;
-        List<Vecino> vecinos = new ArrayList<>();
-        int agentesPrueba = 0;
-
+        Map<String, String> opciones = new HashMap<>();
         for (String arg : args) {
-            if (arg.startsWith("--piso=")) {
-                piso = Piso.deNumero(entero(arg, "--piso="));
-            } else if (arg.startsWith("--puerto=")) {
-                puerto = entero(arg, "--puerto=");
-            } else if (arg.startsWith("--vecinos=")) {
-                vecinos = leerVecinos(arg.substring("--vecinos=".length()));
-            } else if (arg.startsWith("--prueba=")) {
-                agentesPrueba = entero(arg, "--prueba=");
-            } else {
-                throw new IllegalArgumentException("Argumento desconocido: " + arg);
+            int igual = arg.indexOf('=');
+            if (!arg.startsWith("--") || igual < 0) {
+                throw new IllegalArgumentException("Argumento inválido (formato --opcion=valor): " + arg);
             }
+            String nombre = arg.substring(2, igual);
+            if (!OPCIONES.contains(nombre)) {
+                throw new IllegalArgumentException("Opción desconocida: --" + nombre);
+            }
+            opciones.put(nombre, arg.substring(igual + 1));
         }
-        // Por defecto cada piso escucha en 5000 + número de piso
-        return new Config(piso, puerto != null ? puerto : 5000 + piso.getNumero(), vecinos, agentesPrueba);
+        return new Config(opciones);
     }
 
-    private static int entero(String arg, String prefijo) {
-        String valor = arg.substring(prefijo.length());
+    private static int entero(Map<String, String> opciones, String nombre, int porDefecto, int min, int max) {
+        String valor = opciones.get(nombre);
+        if (valor == null) {
+            return porDefecto;
+        }
+        int n;
         try {
-            return Integer.parseInt(valor);
+            n = Integer.parseInt(valor);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Se esperaba un número en " + prefijo + " pero llegó: " + valor);
+            throw new IllegalArgumentException("Se esperaba un número en --" + nombre + " pero llegó: " + valor);
+        }
+        if (n < min || n > max) {
+            throw new IllegalArgumentException("--" + nombre + " debe estar entre " + min + " y " + max);
+        }
+        return n;
+    }
+
+    private static double decimal(Map<String, String> opciones, String nombre, double porDefecto) {
+        String valor = opciones.get(nombre);
+        if (valor == null) {
+            return porDefecto;
+        }
+        try {
+            double d = Double.parseDouble(valor);
+            if (d <= 0) {
+                throw new IllegalArgumentException("--" + nombre + " debe ser mayor que 0");
+            }
+            return d;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Se esperaba un número en --" + nombre + " pero llegó: " + valor);
         }
     }
 
@@ -72,7 +110,11 @@ public final class Config {
             if (partes.length != 2) {
                 throw new IllegalArgumentException("Vecino inválido (formato host:puerto): " + item);
             }
-            vecinos.add(new Vecino(partes[0], entero(partes[1], "")));
+            try {
+                vecinos.add(new Vecino(partes[0], Integer.parseInt(partes[1])));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Puerto inválido en vecino: " + item);
+            }
         }
         return vecinos;
     }
@@ -89,13 +131,35 @@ public final class Config {
         return vecinos;
     }
 
-    /** Agentes de prueba de la Fase 1 (temporal, hasta que existan los agentes reales). */
-    public int getAgentesPrueba() {
-        return agentesPrueba;
+    public int getAficionados() {
+        return aficionados;
+    }
+
+    public int getGuardias() {
+        return guardias;
+    }
+
+    public int getTorniquetes() {
+        return torniquetes;
+    }
+
+    public int getPorcentajeFalsos() {
+        return porcentajeFalsos;
+    }
+
+    public int getPorcentajeDuplicados() {
+        return porcentajeDuplicados;
+    }
+
+    public double getVelocidad() {
+        return velocidad;
     }
 
     @Override
     public String toString() {
-        return piso.getNombre() + " | puerto " + puerto + " | vecinos " + vecinos;
+        return piso.getNombre() + " | puerto " + puerto + " | vecinos " + vecinos
+                + " | aficionados " + aficionados + " | guardias " + guardias + " | torniquetes " + torniquetes
+                + " | falsos " + porcentajeFalsos + "% | duplicados " + porcentajeDuplicados + "%"
+                + " | velocidad x" + velocidad;
     }
 }
