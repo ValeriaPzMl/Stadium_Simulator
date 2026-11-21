@@ -54,15 +54,25 @@ asientos 1315 440  1315 640  8
 asientos 1286 440  1286 640  8
 asientos 1255 440  1255 640  8
 
-# ---------------------------------------------------------------- servicios (Fase 3 en adelante)
-punto escalera 315 540
+# ---------------------------------------------------------------- servicios
+punto escalera 315 540                  # Fase 4
+
+# Baño general: un cubículo por renglón (--banos no puede pasar de estos) y su fila
 lista bano     1605 415
 lista bano     1605 540
 lista bano     1605 665
-punto entrada_bano 1515 540
-lista mostrador  838 185
-lista mostrador  960 185
-lista mostrador 1082 185
+area  fila_bano 1495 430 1535 650
+
+# Tienda: una caja por puesto (--cajas no puede pasar de estas), fila para pagar,
+# zona donde se espera la comida y lugar de cada cocinero (entre los puestos)
+lista caja      838 185
+lista caja      960 185
+lista caja     1082 185
+area  fila_tienda 790 222 1130 248
+area  recoger    1175 120 1340 165
+lista cocina    899 110
+lista cocina   1021 110
+punto porciones 960 28                  # donde se dibujan las porciones del mostrador
 
 # ---------------------------------------------------------------- pasillos
 # Anillo por el pasillo gris entre las gradas y el muro exterior

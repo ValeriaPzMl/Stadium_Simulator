@@ -158,9 +158,13 @@ conexion ab_centro ab_izq esq_ai    # pasillo ab_centro–ab_izq y ab_izq–esq_
   - la lista `puesto_guardia`;
   - los puntos `caseta` y `salida`;
   - las áreas `aparicion` y `fila`;
-  - al menos una línea `asientos`.
+  - al menos una línea `asientos`;
+  - desde la Fase 3:
+    - las listas `bano`, `caja` y `cocina`;
+    - las áreas `fila_bano`, `fila_tienda` y `recoger`;
+    - el punto `porciones`, donde se dibujan las porciones del mostrador.
 
-  `--torniquetes` no puede ser mayor que los torniquetes del archivo, y su valor por defecto es 3, uno por torniquete dibujado.
+  `--torniquetes`, `--banos` y `--cajas` no pueden ser mayores que los puntos que define el archivo. Por defecto valen 3, uno por cada uno dibujado en `s1.png`.
 - **Rutas:** el agente va al nodo más cercano, recorre los pasillos por la ruta más corta (Dijkstra) y, desde el nodo más cercano al destino, camina al destino. Así rodea los muros del dibujo.
   - Los agentes usan `caminarA()` (con rutas) para trayectos largos y `caminarHacia()` (en línea recta) para trayectos cortos, como de la fila al torniquete.
   - **Regla al editar:** el nodo más cercano a cada destino debe estar del mismo lado del muro. Por eso existe `fuera_izq` junto a la salida.

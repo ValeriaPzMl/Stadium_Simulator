@@ -1,6 +1,7 @@
 package estadio.pisos;
 
 import estadio.agentes.Aficionado;
+import estadio.agentes.Cocinero;
 import estadio.agentes.Guardia;
 import estadio.agentes.RegistroAgentes;
 import estadio.comun.Area;
@@ -13,6 +14,9 @@ import estadio.comun.Punto;
 import estadio.comun.Tiempo;
 import estadio.comun.TipoBoleto;
 import estadio.recursos.Asientos;
+import estadio.recursos.BanoGeneral;
+import estadio.recursos.Cajas;
+import estadio.recursos.Mostrador;
 import estadio.recursos.Torniquetes;
 
 import java.util.ArrayList;
@@ -21,8 +25,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Servidor S1: cancha, gradas bajas y la única entrada del estadio.
- * Crea los recursos del piso, arranca a los guardias y genera la llegada de aficionados.
+ * Servidor S1: cancha, gradas bajas, la única entrada del estadio, baño general y tienda.
+ * Crea los recursos del piso, arranca a guardias y cocineros y genera la llegada de aficionados.
  *
  * <p>Todas las posiciones salen de {@code resources/escenarios/s1.txt}; si falta alguna, el
  * constructor falla con un mensaje que dice qué línea agregar.
@@ -33,6 +37,9 @@ public class PlantaBaja {
     private final Escenario escenario;
     private final Torniquetes torniquetes;
     private final Asientos asientos;
+    private final BanoGeneral bano;
+    private final Cajas cajas;
+    private final Mostrador mostrador;
 
     private final List<Punto> puntoTorniquete;
     private final List<Punto> puntoRevision;
@@ -42,6 +49,13 @@ public class PlantaBaja {
     private final Area fila;
     private final Punto salida;
     private final Punto caseta;
+    private final List<Punto> cubiculos;
+    private final Area filaBano;
+    private final List<Punto> puntoCaja;
+    private final Area filaTienda;
+    private final Area recoger;
+    private final List<Punto> cocinas;
+    private final Punto indicadorPorciones;
 
     public PlantaBaja(Config config, Escenario escenario) {
         this.config = config;
@@ -73,8 +87,28 @@ public class PlantaBaja {
                     + " no define asientos (agrega una línea: asientos <x1> <y1> <x2> <y2> <cuántos>)");
         }
 
+        this.cubiculos = primeros(escenario.lista("bano"), config.getBanos(), "banos", "cubículos de baño");
+        this.filaBano = escenario.area("fila_bano");
+        this.puntoCaja = primeros(escenario.lista("caja"), config.getCajas(), "cajas", "cajas");
+        this.filaTienda = escenario.area("fila_tienda");
+        this.recoger = escenario.area("recoger");
+        this.cocinas = escenario.lista("cocina");
+        this.indicadorPorciones = escenario.punto("porciones");
+
         this.torniquetes = new Torniquetes(t);
         this.asientos = new Asientos(escenario.getAsientos());
+        this.bano = new BanoGeneral(cubiculos.size());
+        this.cajas = new Cajas(puntoCaja.size());
+        this.mostrador = new Mostrador(config.getPorciones());
+    }
+
+    /** Los primeros {@code n} puntos de una lista; falla si el escenario define menos. */
+    private List<Punto> primeros(List<Punto> lista, int n, String opcion, String que) {
+        if (n > lista.size()) {
+            throw new IllegalArgumentException("--" + opcion + "=" + n + " pero " + escenario.getFuente()
+                    + " solo define " + lista.size() + " " + que);
+        }
+        return List.copyOf(lista.subList(0, n));
     }
 
     /** Arranca a los guardias y al hilo que genera las llegadas. */
@@ -84,6 +118,10 @@ public class PlantaBaja {
             Punto puesto = puestosGuardia.get(i % puestosGuardia.size())
                     .desplazado(0, -24.0 * (i / puestosGuardia.size()));
             registro.registrarYArrancar(new Guardia(this, puesto));
+        }
+        for (int i = 0; i < config.getCocineros(); i++) {
+            Punto cocina = cocinas.get(i % cocinas.size()).desplazado(0, -22.0 * (i / cocinas.size()));
+            registro.registrarYArrancar(new Cocinero(this, cocina));
         }
 
         Thread llegadas = new Thread(() -> generarLlegadas(registro), "Llegadas");
@@ -180,5 +218,41 @@ public class PlantaBaja {
 
     public Punto getCaseta() {
         return caseta;
+    }
+
+    public BanoGeneral getBano() {
+        return bano;
+    }
+
+    public Cajas getCajas() {
+        return cajas;
+    }
+
+    public Mostrador getMostrador() {
+        return mostrador;
+    }
+
+    public Punto getCubiculo(int lugar) {
+        return cubiculos.get(lugar);
+    }
+
+    public Punto puntoEnFilaBano() {
+        return filaBano.puntoAlAzar();
+    }
+
+    public Punto getPuntoCaja(int lugar) {
+        return puntoCaja.get(lugar);
+    }
+
+    public Punto puntoEnFilaTienda() {
+        return filaTienda.puntoAlAzar();
+    }
+
+    public Punto puntoParaRecoger() {
+        return recoger.puntoAlAzar();
+    }
+
+    public Punto getIndicadorPorciones() {
+        return indicadorPorciones;
     }
 }

@@ -23,14 +23,15 @@ public final class Config {
 
     private static final Set<String> OPCIONES = Set.of(
             "piso", "puerto", "vecinos", "aficionados", "guardias", "torniquetes",
-            "falsos", "duplicados", "velocidad", "editor");
+            "falsos", "duplicados", "velocidad", "editor", "banos", "cajas", "cocineros", "porciones");
 
     /** Opciones que se pueden escribir sin valor: {@code --editor} equivale a {@code --editor=true}. */
     private static final Set<String> BANDERAS = Set.of("editor");
 
     public static final String USO = "Uso: java -jar estadio.jar --piso=<1|2|3> [--puerto=<n>] "
             + "[--vecinos=host:puerto,...] [--aficionados=40] [--guardias=2] [--torniquetes=3] "
-            + "[--falsos=10] [--duplicados=5] [--velocidad=1.0] [--editor]";
+            + "[--falsos=10] [--duplicados=5] [--banos=3] [--cajas=3] [--cocineros=2] "
+            + "[--porciones=8] [--velocidad=1.0] [--editor]";
 
     private final Piso piso;
     private final int puerto;
@@ -40,6 +41,10 @@ public final class Config {
     private final int torniquetes;
     private final int porcentajeFalsos;
     private final int porcentajeDuplicados;
+    private final int banos;
+    private final int cajas;
+    private final int cocineros;
+    private final int porciones;
     private final double velocidad;
     private final boolean editor;
 
@@ -52,6 +57,10 @@ public final class Config {
         torniquetes = entero(opciones, "torniquetes", 3, 1, 10);
         porcentajeFalsos = entero(opciones, "falsos", 10, 0, 100);
         porcentajeDuplicados = entero(opciones, "duplicados", 5, 0, 100 - porcentajeFalsos);
+        banos = entero(opciones, "banos", 3, 1, 10);
+        cajas = entero(opciones, "cajas", 3, 1, 10);
+        cocineros = entero(opciones, "cocineros", 2, 0, 20);
+        porciones = entero(opciones, "porciones", 8, 1, 100);
         velocidad = decimal(opciones, "velocidad", 1.0);
         editor = booleano(opciones, "editor");
     }
@@ -168,6 +177,25 @@ public final class Config {
         return porcentajeDuplicados;
     }
 
+    /** Cubículos del baño general (N). */
+    public int getBanos() {
+        return banos;
+    }
+
+    /** Cajas de cobro de la tienda (C). */
+    public int getCajas() {
+        return cajas;
+    }
+
+    public int getCocineros() {
+        return cocineros;
+    }
+
+    /** Capacidad del mostrador (K porciones). */
+    public int getPorciones() {
+        return porciones;
+    }
+
     public double getVelocidad() {
         return velocidad;
     }
@@ -182,6 +210,8 @@ public final class Config {
         return piso.getNombre() + " | puerto " + puerto + " | vecinos " + vecinos
                 + " | aficionados " + aficionados + " | guardias " + guardias + " | torniquetes " + torniquetes
                 + " | falsos " + porcentajeFalsos + "% | duplicados " + porcentajeDuplicados + "%"
+                + " | baños " + banos + " | cajas " + cajas + " | cocineros " + cocineros
+                + " | porciones " + porciones
                 + " | velocidad x" + velocidad + (editor ? " | EDITOR" : "");
     }
 }
