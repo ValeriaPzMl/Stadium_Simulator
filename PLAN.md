@@ -66,15 +66,16 @@ Decisiones tomadas: **Java 17+**, **Swing**, **sockets TCP** para la distribuci�
 ```
 src/estadio/
   Main.java                  // lee args, muestra config, arranca piso
-  comun/    Boleto, TipoBoleto, AgenteDTO, Mensaje, Config
+  comun/    Boleto, TipoBoleto, AgenteDTO, Mensaje, Config, Escenario, Punto, Area
   red/      ServidorRed (hilo listener), ConexionVecino (envío), Protocolo
   recursos/ BanoGeneral, BanoPalco, Mostrador, Cajas, Torniquetes,
             Escalera, Asientos, ColaPedidos, ColaLlamados, Montacargas
   agentes/  Agente (abstract extends Thread: estado, x, y, piso)
             Aficionado, Guardia, Cocinero, Mesero, VendedorGradas, RelojPartido
   pisos/    Piso (abstract: recursos + agentes locales), PisoBaja, PisoPalcos, PisoPopular
-  gui/      VentanaPiso, PanelPiso, TablaEstados, PanelContadores, DialogoConfig, Sonido
-resources/sonidos/*.wav, resources/img/*.png
+  gui/      VentanaPiso, PanelPiso, Capa (+ CapaPlantaBaja, CapaEditor), TablaEstados,
+            DialogoConfig, Sonido
+resources/escenarios/sN.png + sN.txt, resources/sonidos/*.wav
 ```
 
 **Compilación:** sin Maven ni Gradle. Un script `build.sh` compila con `javac --release 17` y empaqueta `estadio.jar` con `jar`. La JDK de desarrollo es la 27-ea; con `--release 17` el jar también corre en computadoras con Java 17 o más nuevo.
@@ -120,7 +121,7 @@ El trabajo se divide en fases pequeñas, y cada una termina con algo que se pued
 | **0. Esqueleto** | Que compile y abra | Paquetes de la sección 5, `build.sh`, `Main` que lee `--piso/--puerto/--vecinos` y abre una ventana Swing vacía con el nombre del piso | `./build.sh && java -jar estadio.jar --piso=1` abre la ventana "S1 – Planta baja" |
 | **1. Agentes y tabla de estados** | Base de todos los agentes | `Agente` abstracto (estado del dominio, x/y, piso), registro concurrente de agentes, `PanelPiso` que dibuja círculos, `TablaEstados` con `Thread.getState()` refrescada por un `javax.swing.Timer`; agentes de prueba que caminan y duermen | N agentes moviéndose; la tabla muestra `RUNNABLE`/`TIMED_WAITING` y `TERMINATED` al terminar |
 | **2. Entrada de S1** | Primer semáforo y primera cita | `Torniquetes` (Semaphore T), cita guardia↔aficionado (2 semáforos), `Guardia`, `Aficionado` hasta su asiento, `Asientos` (`synchronized`), boletos falsos | Con T=2 nunca hay más de 2 en revisión (contador + aserción en el log); los rechazados salen; nunca dos aficionados en el mismo asiento |
-| **2.5. Escenarios en PNG** *(pendiente: se hace cuando estén listas las imágenes)* | Usar el diseño propio como escenario de cada piso | `resources/escenarios/sN.png` + `sN.txt` con lugares (`punto`, `lista`, `asientos`, `area`) y red de pasillos (`nodo`, `conexion`); `Escenario` que carga y valida el archivo; rutas con Dijkstra y `caminarA()` en `Agente`; `PanelPiso` dibuja el PNG (se elimina `Mapa`); `FondoPlantaBaja` solo dibuja lo dinámico encima; contadores en una barra bajo el panel; modo `--editor` (clic = coordenadas, muestra los puntos configurados, R = recargar) | La prueba de la Fase 2 pasa igual leyendo `s1.txt`; las rutas rodean un "muro" de prueba; un `.txt` con errores falla indicando la línea; el editor muestra los puntos sobre la imagen |
+| **2.5. Escenarios en PNG** | Usar el diseño propio como escenario de cada piso | `resources/escenarios/sN.png` + `sN.txt` con lugares (`punto`, `lista`, `asientos`, `area`) y red de pasillos (`nodo`, `conexion`); `Escenario` que carga y valida el archivo; rutas con Dijkstra y `caminarA()` en `Agente`; `PanelPiso` dibuja el PNG (se elimina `Mapa`); `CapaPlantaBaja` (antes `FondoPlantaBaja`) solo dibuja lo dinámico encima; contadores en una barra bajo el panel; modo `--editor` (clic = coordenadas, muestra los puntos configurados, R = recargar) | La prueba de la Fase 2 pasa igual leyendo `s1.txt`; las rutas rodean un "muro" de prueba; un `.txt` con errores falla indicando la línea; el editor muestra los puntos sobre la imagen |
 | **3. Baño y tienda de S1** | Zona crítica y productor-consumidor | `BanoGeneral` (Semaphore N), `Mostrador` (monitor con wait/notifyAll), `Cajas`, `Cocinero`, zona de decisión del aficionado | Porciones del mostrador siempre en [0, K]; con 0 cocineros los aficionados aparecen en `WAITING`; el baño nunca pasa de N |
 | **4. Red mínima y migración** | Primer cambio de computadora | `Mensaje`, `AgenteDTO`, hilo `ServidorRed`, `ConexionVecino`, escalera simple; un aficionado Popular pasa de S1 a S3 | En 3 terminales locales el aficionado desaparece de S1 y aparece en S3; aficionados en S1 + en S3 = los que entraron |
 | **5. Grada alta (S3) completa** | Segundo piso funcional y regreso | Baño y tienda en S3, `VendedorGradas`, `ColaLlamados`, regreso a S1 para salir | Ciclo completo S1→S3→S1→salida; cada llamado lo atiende un solo vendedor |
@@ -137,21 +138,52 @@ El trabajo se divide en fases pequeñas, y cada una termina con algo que se pued
 Un archivo `resources/escenarios/sN.txt` por piso, junto a su `sN.png`. Las coordenadas son pixeles del PNG (1 pixel = 1 unidad del mapa). Lleva una instrucción por línea y acepta comentarios con `#`:
 
 ```
-imagen s1.png                       # opcional: si falta, se usa fondo liso
-punto  caseta     60 470            # lugar con nombre
-punto  salida    760 590
-lista  torniquete 370 470           # varias líneas con el mismo nombre = lista en orden
-lista  torniquete 440 470
-asientos 115 275  685 275  20       # fila de asientos: desde, hasta, cuántos (se reparten parejo)
-area   fila      300 520 500 565    # rectángulo x1 y1 x2 y2 para elegir puntos al azar
-area   aparicion 300 600 500 600
-nodo   p1 400 430                   # punto de paso de la red de pasillos
-conexion p1 p2 p3                   # pasillo p1–p2 y p2–p3, en ambos sentidos
+imagen s1.png                       # opcional: si falta, fondo liso de "tamano" (1920×1080 por defecto)
+tamano 1920 1080                    # opcional: solo hace falta sin imagen
+punto  caseta    1745 1005          # lugar con nombre
+punto  salida     560 1068
+lista  torniquete 834 985           # varias líneas con el mismo nombre = lista en orden
+lista  torniquete 960 985
+asientos 760 279  1160 279  16      # fila de asientos: desde, hasta, cuántos (se reparten parejo)
+area   fila      660 1046 1260 1072 # rectángulo x1 y1 x2 y2 para elegir puntos al azar
+nodo   ab_centro  960 895           # punto de paso de la red de pasillos
+conexion ab_centro ab_izq esq_ai    # pasillo ab_centro–ab_izq y ab_izq–esq_ai, en ambos sentidos
 ```
 
+- **Lo que S1 necesita** (si falta algo, el programa no arranca y dice qué línea agregar):
+  - las listas `torniquete`, `revision` y `cruce`, con un renglón por torniquete y en el mismo orden:
+    - `torniquete`: donde espera el aficionado;
+    - `revision`: donde se para el guardia;
+    - `cruce`: a donde llega el aficionado al pasar;
+  - la lista `puesto_guardia`;
+  - los puntos `caseta` y `salida`;
+  - las áreas `aparicion` y `fila`;
+  - al menos una línea `asientos`.
+
+  `--torniquetes` no puede ser mayor que los torniquetes del archivo, y su valor por defecto es 3, uno por torniquete dibujado.
 - **Rutas:** el agente va al nodo más cercano, recorre los pasillos por la ruta más corta (Dijkstra) y, desde el nodo más cercano al destino, camina al destino. Así rodea los muros del dibujo.
-- **Recomendaciones para el diseño:** los tres PNG del mismo tamaño (por ejemplo, 1200×800) y sin texto donde se paran los agentes. Los contadores van fuera de la imagen.
-- **Mientras no esté la Fase 2.5:** las Fases 3 y 4 ponen las posiciones nuevas (baño, tienda, escalera) como constantes en `PlantaBaja`, igual que ahora. Al hacer la 2.5, esas constantes se pasan a `s1.txt`.
+  - Los agentes usan `caminarA()` (con rutas) para trayectos largos y `caminarHacia()` (en línea recta) para trayectos cortos, como de la fila al torniquete.
+  - **Regla al editar:** el nodo más cercano a cada destino debe estar del mismo lado del muro. Por eso existe `fuera_izq` junto a la salida.
+- **Validación:** los errores dicen el archivo, la línea y el texto de la línea. Se detectan:
+  - instrucciones desconocidas y números mal escritos;
+  - nombres repetidos;
+  - conexiones con nodos que no existen;
+  - puntos fuera de la imagen;
+  - nodos que no están conectados con los demás.
+- **Lectura:** si existe `resources/escenarios/` en la carpeta desde donde se corre, el `.txt` se lee de ahí. Así se edita sin recompilar. Si no existe, se lee del jar.
+- **Editor:** `java -jar estadio.jar --piso=1 --editor`
+  - Dibuja sobre la imagen todo lo que define el `.txt`: pasillos en amarillo, puntos en morado, listas en naranja, áreas en cian y asientos en azul.
+  - Al mover el mouse muestra las coordenadas.
+  - Un clic copia `x y` al portapapeles y lo imprime en la terminal.
+  - **R** recarga el archivo; si tiene errores, los muestra en rojo y conserva el anterior.
+  - En modo editor no corre la simulación.
+- **Imágenes:** las tres miden 1920×1080. Las coordenadas van en píxeles de la imagen, y el panel la escala a su tamaño. Los contadores van en una barra bajo el plano.
+- **S2 y S3** por ahora solo definen la escalera y algunos servicios. Sus asientos, palcos y pasillos se agregan en las Fases 5 y 6.
+- **Prueba de cierre** (scratchpad, `PruebaFase25`):
+  - una ruta rodea un muro de prueba;
+  - 8 archivos con errores fallan e indican la línea correcta;
+  - 785 viajes en `s1.txt` solo cruzan el muro exterior por la puerta;
+  - la simulación de la Fase 2 (60 aficionados, T=2) da los mismos invariantes leyendo `s1.txt`.
 
 ### Requisitos del profesor → fase
 

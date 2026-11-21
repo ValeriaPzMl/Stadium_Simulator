@@ -2,7 +2,6 @@ package estadio.agentes;
 
 import estadio.comun.Bitacora;
 import estadio.comun.Boleto;
-import estadio.comun.Mapa;
 import estadio.comun.Tiempo;
 import estadio.pisos.PlantaBaja;
 import estadio.recursos.Asientos.Asiento;
@@ -26,26 +25,26 @@ public class Aficionado extends Agente {
     private final PlantaBaja planta;
 
     public Aficionado(Boleto boleto, PlantaBaja planta) {
-        super(ThreadLocalRandom.current().nextDouble(300, 500), Mapa.ALTO, Estado.CAMINANDO_A_ENTRADA);
+        super(planta.getEscenario(), planta.puntoDeAparicion(), Estado.CAMINANDO_A_ENTRADA);
         this.boleto = boleto;
         this.planta = planta;
     }
 
     @Override
     protected void vivir() throws InterruptedException {
-        double[] fila = planta.puntoEnFila();
-        caminarHacia(fila[0], fila[1]);
+        caminarHacia(planta.puntoEnFila());
 
         if (!pasarTorniquete()) {
             cambiarEstado(Estado.RECHAZADO);
             Bitacora.info("Rechazado, boleto " + boleto);
+            caminarHacia(planta.puntoEnFila()); // se regresa por donde vino
             salirDelEstadio();
             return;
         }
 
         cambiarEstado(Estado.BUSCANDO_ASIENTO);
         Asiento asiento = planta.getAsientos().get(boleto.asiento());
-        caminarHacia(asiento.getX(), asiento.getY());
+        caminarA(asiento.getPosicion());
         if (!asiento.ocupar(this)) {
             cambiarEstado(Estado.ASIENTO_OCUPADO);
             Tiempo.dormir(1500);
@@ -68,11 +67,11 @@ public class Aficionado extends Agente {
         cambiarEstado(Estado.EN_FILA_TORNIQUETE);
         int lugar = torniquetes.entrar();
         try {
-            caminarHacia(torniquetes.getX(lugar), torniquetes.getY() + 15);
+            caminarHacia(planta.getPuntoTorniquete(lugar));
             cambiarEstado(Estado.SIENDO_REVISADO);
             boolean aceptado = torniquetes.pedirRevision(boleto, lugar);
             if (aceptado) {
-                caminarHacia(torniquetes.getX(lugar), torniquetes.getY() - 25); // cruza el torniquete
+                caminarHacia(planta.getPuntoCruce(lugar)); // cruza el torniquete
             }
             return aceptado;
         } finally {
@@ -84,7 +83,7 @@ public class Aficionado extends Agente {
         if (getEstado() != Estado.RECHAZADO && getEstado() != Estado.ASIENTO_OCUPADO) {
             cambiarEstado(Estado.SALIENDO);
         }
-        caminarHacia(PlantaBaja.SALIDA_X, PlantaBaja.SALIDA_Y);
+        caminarA(planta.getSalida());
     }
 
     public Boleto getBoleto() {

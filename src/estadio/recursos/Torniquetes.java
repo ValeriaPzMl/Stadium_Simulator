@@ -48,8 +48,6 @@ public class Torniquetes {
     }
 
     private final int capacidad;
-    private final double[] posicionX;
-    private final double posicionY;
 
     private final Semaphore lugares;
     private final boolean[] ocupado; // protegido por synchronized(this)
@@ -64,14 +62,9 @@ public class Torniquetes {
     private final AtomicInteger aceptados = new AtomicInteger();
     private final AtomicInteger rechazados = new AtomicInteger();
 
-    /**
-     * @param posicionX coordenada X de cada torniquete; su longitud es la capacidad T
-     * @param posicionY coordenada Y común de los torniquetes
-     */
-    public Torniquetes(double[] posicionX, double posicionY) {
-        this.capacidad = posicionX.length;
-        this.posicionX = posicionX.clone();
-        this.posicionY = posicionY;
+    /** @param capacidad número de torniquetes T (las posiciones las define el escenario del piso) */
+    public Torniquetes(int capacidad) {
+        this.capacidad = capacidad;
         this.lugares = new Semaphore(capacidad, true);
         this.ocupado = new boolean[capacidad];
     }
@@ -150,14 +143,6 @@ public class Torniquetes {
 
     public int getCapacidad() {
         return capacidad;
-    }
-
-    public double getX(int lugar) {
-        return posicionX[lugar];
-    }
-
-    public double getY() {
-        return posicionY;
     }
 
     public synchronized boolean estaOcupado(int lugar) {

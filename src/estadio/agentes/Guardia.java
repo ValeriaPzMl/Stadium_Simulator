@@ -1,5 +1,6 @@
 package estadio.agentes;
 
+import estadio.comun.Punto;
 import estadio.comun.Tiempo;
 import estadio.pisos.PlantaBaja;
 import estadio.recursos.Torniquetes;
@@ -20,21 +21,21 @@ public class Guardia extends Agente {
     private static final long ESPERA_MAXIMA_MS = 5000;
     private static final double PROBABILIDAD_DESCANSO = 0.3;
 
+    private final PlantaBaja planta;
     private final Torniquetes torniquetes;
-    private final double puestoX;
-    private final double puestoY;
+    private final Punto puesto;
 
-    public Guardia(Torniquetes torniquetes, double puestoX, double puestoY) {
-        super(PlantaBaja.CASETA_X, PlantaBaja.CASETA_Y, Estado.CAMINANDO_A_PUESTO);
-        this.torniquetes = torniquetes;
-        this.puestoX = puestoX;
-        this.puestoY = puestoY;
+    public Guardia(PlantaBaja planta, Punto puesto) {
+        super(planta.getEscenario(), planta.getCaseta(), Estado.CAMINANDO_A_PUESTO);
+        this.planta = planta;
+        this.torniquetes = planta.getTorniquetes();
+        this.puesto = puesto;
     }
 
     @Override
     protected void vivir() throws InterruptedException {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        caminarHacia(puestoX, puestoY);
+        caminarA(puesto);
         while (true) {
             cambiarEstado(Estado.ESPERANDO_AFICIONADO);
             Solicitud solicitud = torniquetes.esperarAficionado(ESPERA_MAXIMA_MS);
@@ -48,19 +49,19 @@ public class Guardia extends Agente {
             }
 
             cambiarEstado(Estado.REVISANDO_BOLETO);
-            caminarHacia(torniquetes.getX(solicitud.getLugar()) + 18, torniquetes.getY());
+            caminarHacia(planta.getPuntoRevision(solicitud.getLugar()));
             Tiempo.dormir(rnd.nextLong(800, 1600));
             torniquetes.darVeredicto(solicitud, solicitud.getBoleto().autentico());
-            caminarHacia(puestoX, puestoY);
+            caminarHacia(puesto);
         }
     }
 
     private void descansar() throws InterruptedException {
         cambiarEstado(Estado.DESCANSANDO);
-        caminarHacia(PlantaBaja.CASETA_X, PlantaBaja.CASETA_Y);
+        caminarA(planta.getCaseta());
         Tiempo.dormir(ThreadLocalRandom.current().nextLong(4000, 8000));
         cambiarEstado(Estado.CAMINANDO_A_PUESTO);
-        caminarHacia(puestoX, puestoY);
+        caminarA(puesto);
     }
 
     @Override

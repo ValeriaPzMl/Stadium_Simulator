@@ -1,0 +1,101 @@
+# Escenario de S1 – Planta baja. Coordenadas en pixeles de s1.png (1920×1080).
+# Formato: PLAN.md, sección "Fase 2.5". Para sacar coordenadas:
+#   java -jar estadio.jar --piso=1 --editor     (clic = copia "x y", R = recargar este archivo)
+
+imagen s1.png
+
+# ---------------------------------------------------------------- entrada
+# Afuera: los aficionados aparecen abajo y hacen fila frente a la caseta de torniquetes
+area aparicion 800 1074 1120 1078
+area fila      660 1046 1260 1072
+
+# Un renglón por torniquete, en el mismo orden en las tres listas:
+#   torniquete = donde se para el aficionado mientras lo revisan
+#   revision   = donde se para el guardia que revisa ese torniquete
+#   cruce      = a donde llega el aficionado al pasar (ya adentro del estadio)
+lista torniquete  834 985
+lista torniquete  960 985
+lista torniquete 1086 985
+lista revision    872 948
+lista revision    998 948
+lista revision   1124 948
+lista cruce       834 905
+lista cruce       960 905
+lista cruce      1086 905
+
+# Puesto de espera de cada guardia (si hay más guardias que puestos, se reparten)
+lista puesto_guardia  872 905
+lista puesto_guardia  998 905
+lista puesto_guardia 1124 905
+
+punto caseta 1745 1005       # descanso de los guardias (sillón con reloj)
+punto salida  560 1068       # por donde se van los aficionados
+
+# ---------------------------------------------------------------- gradas bajas
+# Cuatro anillos alrededor de la cancha; se usan las partes rectas.
+# Arriba (del anillo exterior al interior)
+asientos 760 279  1160 279  16
+asientos 760 304  1160 304  16
+asientos 760 328  1160 328  16
+asientos 760 352  1160 352  16
+# Abajo
+asientos 760 800  1160 800  16
+asientos 760 776  1160 776  16
+asientos 760 751  1160 751  16
+asientos 760 729  1160 729  16
+# Izquierda
+asientos 576 440  576 640  8
+asientos 603 440  603 640  8
+asientos 632 440  632 640  8
+asientos 663 440  663 640  8
+# Derecha
+asientos 1342 440  1342 640  8
+asientos 1315 440  1315 640  8
+asientos 1286 440  1286 640  8
+asientos 1255 440  1255 640  8
+
+# ---------------------------------------------------------------- servicios (Fase 3 en adelante)
+punto escalera 315 540
+lista bano     1605 415
+lista bano     1605 540
+lista bano     1605 665
+punto entrada_bano 1515 540
+lista mostrador  838 185
+lista mostrador  960 185
+lista mostrador 1082 185
+
+# ---------------------------------------------------------------- pasillos
+# Anillo por el pasillo gris entre las gradas y el muro exterior
+nodo ab_izq     640 895
+nodo ab_centro  960 895
+nodo ab_der    1280 895
+nodo esq_ai     445 885
+nodo iz_abajo   441 700
+nodo iz_centro  441 540
+nodo iz_arriba  441 380
+nodo esq_si     445 200
+nodo ar_izq     640 205
+nodo ar_centro  960 205
+nodo ar_der    1280 205
+nodo esq_sd    1475 200
+nodo de_arriba 1479 380
+nodo de_centro 1479 540
+nodo de_abajo  1479 700
+nodo esq_ad    1475 885
+conexion ab_centro ab_izq esq_ai iz_abajo iz_centro iz_arriba esq_si ar_izq ar_centro
+conexion ar_centro ar_der esq_sd de_arriba de_centro de_abajo esq_ad ab_der ab_centro
+
+# Puerta de salida: el extremo izquierdo de la caseta de torniquetes
+nodo puerta_in  786 905
+nodo puerta_out 786 1058
+conexion ab_izq puerta_in ab_centro
+conexion puerta_in puerta_out
+
+# Afuera, a lo largo de la fila y hasta la caseta de descanso.
+# Ojo: cada destino debe tener como nodo más cercano uno del mismo lado del muro
+# (por eso fuera_izq está junto a la salida; sin él, el más cercano sería esq_ai, adentro).
+nodo fuera_izq     600 1062
+nodo fuera_centro  960 1058
+nodo fuera_der    1200 1058
+nodo fuera_caseta 1640 1050
+conexion fuera_izq puerta_out fuera_centro fuera_der fuera_caseta

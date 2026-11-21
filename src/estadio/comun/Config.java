@@ -23,11 +23,14 @@ public final class Config {
 
     private static final Set<String> OPCIONES = Set.of(
             "piso", "puerto", "vecinos", "aficionados", "guardias", "torniquetes",
-            "falsos", "duplicados", "velocidad");
+            "falsos", "duplicados", "velocidad", "editor");
+
+    /** Opciones que se pueden escribir sin valor: {@code --editor} equivale a {@code --editor=true}. */
+    private static final Set<String> BANDERAS = Set.of("editor");
 
     public static final String USO = "Uso: java -jar estadio.jar --piso=<1|2|3> [--puerto=<n>] "
-            + "[--vecinos=host:puerto,...] [--aficionados=40] [--guardias=2] [--torniquetes=2] "
-            + "[--falsos=10] [--duplicados=5] [--velocidad=1.0]";
+            + "[--vecinos=host:puerto,...] [--aficionados=40] [--guardias=2] [--torniquetes=3] "
+            + "[--falsos=10] [--duplicados=5] [--velocidad=1.0] [--editor]";
 
     private final Piso piso;
     private final int puerto;
@@ -38,6 +41,7 @@ public final class Config {
     private final int porcentajeFalsos;
     private final int porcentajeDuplicados;
     private final double velocidad;
+    private final boolean editor;
 
     private Config(Map<String, String> opciones) {
         piso = Piso.deNumero(entero(opciones, "piso", 1, 1, 3));
@@ -45,15 +49,20 @@ public final class Config {
         vecinos = Collections.unmodifiableList(leerVecinos(opciones.getOrDefault("vecinos", "")));
         aficionados = entero(opciones, "aficionados", 40, 0, 1000);
         guardias = entero(opciones, "guardias", 2, 0, 50);
-        torniquetes = entero(opciones, "torniquetes", 2, 1, 10);
+        torniquetes = entero(opciones, "torniquetes", 3, 1, 10);
         porcentajeFalsos = entero(opciones, "falsos", 10, 0, 100);
         porcentajeDuplicados = entero(opciones, "duplicados", 5, 0, 100 - porcentajeFalsos);
         velocidad = decimal(opciones, "velocidad", 1.0);
+        editor = booleano(opciones, "editor");
     }
 
     public static Config desdeArgumentos(String[] args) {
         Map<String, String> opciones = new HashMap<>();
         for (String arg : args) {
+            if (arg.startsWith("--") && BANDERAS.contains(arg.substring(2))) {
+                opciones.put(arg.substring(2), "true");
+                continue;
+            }
             int igual = arg.indexOf('=');
             if (!arg.startsWith("--") || igual < 0) {
                 throw new IllegalArgumentException("Argumento inválido (formato --opcion=valor): " + arg);
@@ -98,6 +107,14 @@ public final class Config {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Se esperaba un número en --" + nombre + " pero llegó: " + valor);
         }
+    }
+
+    private static boolean booleano(Map<String, String> opciones, String nombre) {
+        String valor = opciones.getOrDefault(nombre, "false");
+        if (!valor.equals("true") && !valor.equals("false")) {
+            throw new IllegalArgumentException("--" + nombre + " debe ser true o false");
+        }
+        return Boolean.parseBoolean(valor);
     }
 
     private static List<Vecino> leerVecinos(String lista) {
@@ -155,11 +172,16 @@ public final class Config {
         return velocidad;
     }
 
+    /** Modo editor de escenario: muestra los puntos del .txt y no corre la simulación. */
+    public boolean isEditor() {
+        return editor;
+    }
+
     @Override
     public String toString() {
         return piso.getNombre() + " | puerto " + puerto + " | vecinos " + vecinos
                 + " | aficionados " + aficionados + " | guardias " + guardias + " | torniquetes " + torniquetes
                 + " | falsos " + porcentajeFalsos + "% | duplicados " + porcentajeDuplicados + "%"
-                + " | velocidad x" + velocidad;
+                + " | velocidad x" + velocidad + (editor ? " | EDITOR" : "");
     }
 }

@@ -41,6 +41,7 @@ Java 17+, Swing (gráficos), `javax.sound` (sonido), sockets TCP (comunicación 
 java -jar estadio.jar --piso=1 --puerto=5001 --vecinos=localhost:5002,localhost:5003
 java -jar estadio.jar --piso=2 --puerto=5002 --vecinos=localhost:5001
 java -jar estadio.jar --piso=3 --puerto=5003 --vecinos=localhost:5001
+java -jar estadio.jar --piso=1 --editor      # editor del escenario (coordenadas de resources/escenarios/s1.txt)
 ```
 
 ## Documentación

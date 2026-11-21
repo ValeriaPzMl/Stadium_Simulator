@@ -1,0 +1,13 @@
+# Escenario de S3 – Grada alta. Coordenadas en pixeles de s3.png (1920×1080).
+# Formato: PLAN.md, sección "Fase 2.5". Editor: java -jar estadio.jar --piso=3 --editor
+# Los asientos populares, la fila de la tienda y los pasillos se agregan en la Fase 5.
+
+imagen s3.png
+
+punto escalera 315 540
+lista bano     1605 415
+lista bano     1605 540
+lista bano     1605 665
+lista mostrador  838 185
+lista mostrador  960 185
+lista mostrador 1082 185

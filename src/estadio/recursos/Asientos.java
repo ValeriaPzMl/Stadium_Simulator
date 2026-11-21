@@ -2,6 +2,7 @@ package estadio.recursos;
 
 import estadio.agentes.Agente;
 import estadio.comun.Bitacora;
+import estadio.comun.Punto;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,14 +19,12 @@ public class Asientos {
 
     public final class Asiento {
         private final int numero;
-        private final double x;
-        private final double y;
+        private final Punto posicion;
         private Agente ocupante; // protegido por synchronized(this)
 
-        private Asiento(int numero, double x, double y) {
+        private Asiento(int numero, Punto posicion) {
             this.numero = numero;
-            this.x = x;
-            this.y = y;
+            this.posicion = posicion;
         }
 
         /** @return {@code true} si se sentó; {@code false} si ya estaba ocupado */
@@ -58,12 +57,8 @@ public class Asientos {
             return numero;
         }
 
-        public double getX() {
-            return x;
-        }
-
-        public double getY() {
-            return y;
+        public Punto getPosicion() {
+            return posicion;
         }
     }
 
@@ -71,14 +66,11 @@ public class Asientos {
     private final AtomicInteger sentados = new AtomicInteger();
     private final AtomicInteger conflictos = new AtomicInteger();
 
-    /** Crea una cuadrícula de filas × columnas asientos, numerados de 0 por filas. */
-    public Asientos(int filas, int columnas, double xInicial, double yInicial, double separacionX,
-                    double separacionY) {
+    /** Un asiento por posición, numerados desde 0 en el orden dado. */
+    public Asientos(List<Punto> posiciones) {
         List<Asiento> lista = new ArrayList<>();
-        for (int f = 0; f < filas; f++) {
-            for (int c = 0; c < columnas; c++) {
-                lista.add(new Asiento(lista.size(), xInicial + c * separacionX, yInicial + f * separacionY));
-            }
+        for (Punto p : posiciones) {
+            lista.add(new Asiento(lista.size(), p));
         }
         this.asientos = Collections.unmodifiableList(lista);
     }

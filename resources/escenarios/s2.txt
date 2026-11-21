@@ -1,0 +1,8 @@
+# Escenario de S2 – Palcos. Coordenadas en pixeles de s2.png (1920×1080).
+# Formato: PLAN.md, sección "Fase 2.5". Editor: java -jar estadio.jar --piso=2 --editor
+# Los palcos, sus baños y los pasillos se agregan en la Fase 6.
+
+imagen s2.png
+
+punto escalera    315 540
+punto montacargas 1605 540
