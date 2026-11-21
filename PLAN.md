@@ -123,6 +123,7 @@ El trabajo se divide en fases pequeñas, y cada una termina con algo que se pued
 | **2. Entrada de S1** | Primer semáforo y primera cita | `Torniquetes` (Semaphore T), cita guardia↔aficionado (2 semáforos), `Guardia`, `Aficionado` hasta su asiento, `Asientos` (`synchronized`), boletos falsos | Con T=2 nunca hay más de 2 en revisión (contador + aserción en el log); los rechazados salen; nunca dos aficionados en el mismo asiento |
 | **2.5. Escenarios en PNG** | Usar el diseño propio como escenario de cada piso | `resources/escenarios/sN.png` + `sN.txt` con lugares (`punto`, `lista`, `asientos`, `area`) y red de pasillos (`nodo`, `conexion`); `Escenario` que carga y valida el archivo; rutas con Dijkstra y `caminarA()` en `Agente`; `PanelPiso` dibuja el PNG (se elimina `Mapa`); `CapaPlantaBaja` (antes `FondoPlantaBaja`) solo dibuja lo dinámico encima; contadores en una barra bajo el panel; modo `--editor` (clic = coordenadas, muestra los puntos configurados, R = recargar) | La prueba de la Fase 2 pasa igual leyendo `s1.txt`; las rutas rodean un "muro" de prueba; un `.txt` con errores falla indicando la línea; el editor muestra los puntos sobre la imagen |
 | **3. Baño y tienda de S1** | Zona crítica y productor-consumidor | `BanoGeneral` (Semaphore N), `Mostrador` (monitor con wait/notifyAll), `Cajas`, `Cocinero`, zona de decisión del aficionado | Porciones del mostrador siempre en [0, K]; con 0 cocineros los aficionados aparecen en `WAITING`; el baño nunca pasa de N |
+| **3.5. Configuración y tableros (2º avance)** | Lo que pide el 2º avance (b, c, d, f) | `DialogoConfig` al arrancar (servidor y vecinos, agentes, búferes "m de n" con n = lo dibujado, todos los timers como rangos, comando equivalente); `Config.desdeOpciones` con una sola validación; pestañas Hilos (conteo por `Thread.State` + tabla por agente), Tablero (agentes por tipo + todos los búferes del simulador, en vivo o "Fase N") y Leyenda; color por estado del agente (relleno) y del hilo (borde rojo WAITING, magenta BLOCKED) | La ventana arranca la simulación con lo elegido; con baño 1 de 3 y 0 cocineros se ven WAITING en Hilos, Tablero y bordes; `--sin-dialogo` arranca directo |
 | **4. Red mínima y migración** | Primer cambio de computadora | `Mensaje`, `AgenteDTO`, hilo `ServidorRed`, `ConexionVecino`, escalera simple; un aficionado Popular pasa de S1 a S3 | En 3 terminales locales el aficionado desaparece de S1 y aparece en S3; aficionados en S1 + en S3 = los que entraron |
 | **5. Grada alta (S3) completa** | Segundo piso funcional y regreso | Baño y tienda en S3, `VendedorGradas`, `ColaLlamados`, regreso a S1 para salir | Ciclo completo S1→S3→S1→salida; cada llamado lo atiende un solo vendedor |
 | **6. Palcos (S2)** | Búfer 1 y deadlock | Guardia de palcos, `BanoPalco` (lock), `ColaPedidos`, `Mesero` con bandeja + montacargas en orden fijo, switch de "modo deadlock" | Con modo deadlock ON los meseros se traban (WAITING permanente en la tabla); con OFF corre varios minutos sin trabarse |
@@ -130,7 +131,7 @@ El trabajo se divide en fases pequeñas, y cada una termina con algo que se pued
 | **8. Presentación** | Lo que se ve y se oye | `DialogoConfig` (JSpinner), `Sonido` (.wav), sprites o iconos, `PanelContadores`, colores por estado en la tabla | Cambiar la configuración cambia la simulación; se escucha el silbato, el gol y la multitud |
 | **9. Prueba final** | Listo para entregar | Prueba en 3 PCs reales, prueba de estrés (muchos agentes), reporte final y ensayo de la exposición | Pasa el checklist de requisitos del profesor |
 
-- **Entrega 2 (avance de programación):** fases 0 a 4. Ya tiene S1 funcionando y una migración real.
+- **Entrega 2 (avance de programación):** fases 0 a 4, incluida la 3.5. Ya tiene S1 funcionando, la ventana de configuración, los tableros y una migración real.
 - **Entrega final:** fases 5 a 9.
 
 ### Fase 2.5: formato del archivo de escenario
@@ -189,6 +190,17 @@ conexion ab_centro ab_izq esq_ai    # pasillo ab_centro–ab_izq y ab_izq–esq_
   - 785 viajes en `s1.txt` solo cruzan el muro exterior por la puerta;
   - la simulación de la Fase 2 (60 aficionados, T=2) da los mismos invariantes leyendo `s1.txt`.
 
+### Requisitos del 2º avance (`Descripcion/2oAvanceProyectoFinal.pdf`) → dónde está
+
+| Punto | Dónde |
+|---|---|
+| a) BPMN corregidos + aspecto distribuido y cliente como agentes | Documento (no es código): actualizar `entrega1/bpmn/` con las correcciones; agregar el BPMN del cliente (conexión al vecino) junto al de `ServidorRed` |
+| b) Ventana de configuración: timers y búferes "m de n" | `DialogoConfig`, que aparece al arrancar |
+| c) Tablero de estados de los hilos | Pestaña **Hilos** (conteo por tipo × `Thread.State`) |
+| d) Tablero de agentes por tipo y búferes | Pestaña **Tablero** (los de S1 en vivo, los demás con su fase) |
+| e) Dos agentes funcionando con interacción | Guardia ↔ aficionado (cita); cocinero ↔ aficionado (mostrador) |
+| f) Tabla de estados BPMN / animación por estados | Tabla por agente (pestaña Hilos) + colores por estado en el plano + pestaña **Leyenda** |
+
 ### Requisitos del profesor → fase
 
 | Requisito (`Descripcion/01_finalProject.pdf`) | Fase |
@@ -201,4 +213,4 @@ conexion ab_centro ab_izq esq_ai    # pasillo ab_centro–ab_izq y ab_izq–esq_
 | Evitar deadlock | 6 |
 | Cliente-servidor, agentes cambian de computadora | 4, 5, 7 |
 | Sonido | 8 |
-| Especificar cuántos agentes entran | 8 (antes de eso, por argumentos de línea de comandos) |
+| Especificar cuántos agentes entran | 3.5 (ventana de configuración) |

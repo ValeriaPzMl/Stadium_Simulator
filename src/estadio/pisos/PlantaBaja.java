@@ -134,7 +134,7 @@ public class PlantaBaja {
         try {
             for (Boleto boleto : boletos) {
                 registro.registrarYArrancar(new Aficionado(boleto, this));
-                Tiempo.dormir(ThreadLocalRandom.current().nextLong(300, 900));
+                Tiempo.dormir(config.tiempo(Config.LLEGADA).alAzar());
             }
             Bitacora.info("Llegaron los " + boletos.size() + " aficionados");
         } catch (InterruptedException e) {
@@ -176,6 +176,10 @@ public class PlantaBaja {
     }
 
     // ------------------------------------------------------------ para los agentes y la interfaz
+
+    public Config getConfig() {
+        return config;
+    }
 
     public Escenario getEscenario() {
         return escenario;

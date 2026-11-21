@@ -1,5 +1,6 @@
 package estadio.agentes;
 
+import estadio.comun.Config;
 import estadio.comun.Punto;
 import estadio.comun.Tiempo;
 import estadio.pisos.PlantaBaja;
@@ -14,16 +15,34 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class Cocinero extends Agente {
 
-    public enum Estado { CAMINANDO_A_COCINA, PREPARANDO, COLOCANDO, ESPERANDO_ESPACIO, DESCANSANDO, FUERA }
+    public enum Estado implements EstadoAgente {
+        CAMINANDO_A_COCINA(255, 224, 178),
+        PREPARANDO(251, 140, 0),
+        COLOCANDO(255, 183, 77),
+        ESPERANDO_ESPACIO(191, 54, 12),
+        DESCANSANDO(215, 204, 200),
+        FUERA(117, 117, 117);
 
-    private static final double PROBABILIDAD_DESCANSO = 0.1;
+        private final Color color;
 
+        Estado(int r, int g, int b) {
+            this.color = new Color(r, g, b);
+        }
+
+        @Override
+        public Color color() {
+            return color;
+        }
+    }
+
+    private final Config config;
     private final Mostrador mostrador;
     private final Punto cocina;
 
     public Cocinero(PlantaBaja planta, Punto cocina) {
         // Llega por la parte de atrás de la tienda
         super(planta.getEscenario(), cocina.desplazado(0, -40), Estado.CAMINANDO_A_COCINA);
+        this.config = planta.getConfig();
         this.mostrador = planta.getMostrador();
         this.cocina = cocina;
     }
@@ -34,7 +53,7 @@ public class Cocinero extends Agente {
         caminarHacia(cocina);
         while (true) {
             cambiarEstado(Estado.PREPARANDO);
-            Tiempo.dormir(rnd.nextLong(1500, 3000));
+            Tiempo.dormir(config.tiempo(Config.PREPARAR).alAzar());
 
             cambiarEstado(Estado.COLOCANDO);
             if (!mostrador.intentarPoner()) {
@@ -44,9 +63,9 @@ public class Cocinero extends Agente {
             }
 
             // Zona de decisión: seguir cocinando o descansar un rato
-            if (rnd.nextDouble() < PROBABILIDAD_DESCANSO) {
+            if (rnd.nextInt(100) < config.getProbDescansoCocinero()) {
                 cambiarEstado(Estado.DESCANSANDO);
-                Tiempo.dormir(rnd.nextLong(3000, 6000));
+                Tiempo.dormir(config.tiempo(Config.DESCANSO_COCINERO).alAzar());
             }
         }
     }
@@ -57,12 +76,7 @@ public class Cocinero extends Agente {
     }
 
     @Override
-    public Color getColor() {
-        return new Color(251, 140, 0);
-    }
-
-    @Override
-    protected Enum<?> estadoFinal() {
+    protected EstadoAgente estadoFinal() {
         return Estado.FUERA;
     }
 }

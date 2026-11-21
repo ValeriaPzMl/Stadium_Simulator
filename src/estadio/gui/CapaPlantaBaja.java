@@ -10,6 +10,7 @@ import estadio.recursos.ZonaConCupo;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.List;
 
 /**
  * Lo dinámico de S1 encima de {@code s1.png}: asientos libres u ocupados, torniquetes, cubículos y
@@ -106,5 +107,38 @@ public class CapaPlantaBaja implements Capa {
                 b.getEnFila(), b.getEnUso(), b.getCapacidad(), b.getMaximoEnUso(),
                 c.getEnFila(), c.getEnUso(), c.getCapacidad(),
                 m.getPorciones(), m.getCapacidad(), m.getEsperandoComida(), m.getEsperandoEspacio(), m.getVendidas());
+    }
+
+    @Override
+    public List<FilaBufer> buferes() {
+        Torniquetes t = planta.getTorniquetes();
+        Asientos a = planta.getAsientos();
+        ZonaConCupo b = planta.getBano();
+        ZonaConCupo c = planta.getCajas();
+        Mostrador m = planta.getMostrador();
+        String s1 = "S1";
+        return List.of(
+                new FilaBufer("T", "Torniquetes", s1, FilaBufer.BUFER_M,
+                        mDeN(t.getCapacidad(), planta.getEscenario().lista("torniquete").size()),
+                        String.valueOf(t.getEnFila()), String.valueOf(t.getEnRevision()),
+                        "máx " + t.getMaximoEnRevision() + " · Semaphore"),
+                new FilaBufer("A", "Asientos", s1, FilaBufer.BUFER_1, "1 de 1 (×" + a.getCantidad() + ")",
+                        "—", String.valueOf(a.getSentados()), "conflictos " + a.getConflictos() + " · synchronized"),
+                new FilaBufer("Bg", "Baño general", s1, FilaBufer.BUFER_M,
+                        mDeN(b.getCapacidad(), planta.getEscenario().lista("bano").size()),
+                        String.valueOf(b.getEnFila()), String.valueOf(b.getEnUso()),
+                        "máx " + b.getMaximoEnUso() + " · Semaphore"),
+                new FilaBufer("Cj", "Cajas", s1, FilaBufer.BUFER_M,
+                        mDeN(c.getCapacidad(), planta.getEscenario().lista("caja").size()),
+                        String.valueOf(c.getEnFila()), String.valueOf(c.getEnUso()),
+                        "máx " + c.getMaximoEnUso() + " · Semaphore"),
+                new FilaBufer("M", "Mostrador", s1, FilaBufer.PROD_CONS, mDeN(m.getCapacidad(), Mostrador.MAXIMO),
+                        String.valueOf(m.getEsperandoComida()), m.getPorciones() + " porciones",
+                        m.getEsperandoEspacio() + " cocineros esperando espacio · vendidas " + m.getVendidas()
+                                + " · wait/notifyAll"));
+    }
+
+    private static String mDeN(int m, int n) {
+        return m + " de " + n;
     }
 }

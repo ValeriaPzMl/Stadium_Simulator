@@ -30,11 +30,11 @@ public abstract class Agente extends Thread {
 
     private final int idAgente;
     private final Escenario escenario;
-    private volatile Enum<?> estado;
+    private volatile EstadoAgente estado;
     private volatile double x;
     private volatile double y;
 
-    protected Agente(Escenario escenario, Punto inicio, Enum<?> estadoInicial) {
+    protected Agente(Escenario escenario, Punto inicio, EstadoAgente estadoInicial) {
         this.idAgente = SIGUIENTE_ID.getAndIncrement();
         this.escenario = escenario;
         this.x = inicio.x();
@@ -50,11 +50,13 @@ public abstract class Agente extends Thread {
     /** Nombre del tipo de agente para la tabla, p. ej. "Aficionado". */
     public abstract String getTipo();
 
-    /** Color con el que se dibuja. */
-    public abstract Color getColor();
+    /** Color de relleno: el del estado actual (ver {@link EstadoAgente}). */
+    public Color getColor() {
+        return estado.color();
+    }
 
     /** Estado del dominio que se muestra cuando el hilo ya terminó. */
-    protected abstract Enum<?> estadoFinal();
+    protected abstract EstadoAgente estadoFinal();
 
     @Override
     public final void run() {
@@ -67,7 +69,7 @@ public abstract class Agente extends Thread {
         }
     }
 
-    protected void cambiarEstado(Enum<?> nuevo) {
+    protected void cambiarEstado(EstadoAgente nuevo) {
         estado = nuevo;
     }
 
@@ -108,7 +110,7 @@ public abstract class Agente extends Thread {
         return idAgente;
     }
 
-    public Enum<?> getEstado() {
+    public EstadoAgente getEstado() {
         return estado;
     }
 

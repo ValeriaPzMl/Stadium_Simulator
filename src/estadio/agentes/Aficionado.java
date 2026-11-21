@@ -10,6 +10,8 @@ import estadio.recursos.BanoGeneral;
 import estadio.recursos.Cajas;
 import estadio.recursos.Torniquetes;
 
+import estadio.comun.Config;
+
 import java.awt.Color;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -20,12 +22,37 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class Aficionado extends Agente {
 
-    public enum Estado {
-        CAMINANDO_A_ENTRADA, EN_FILA_TORNIQUETE, SIENDO_REVISADO, RECHAZADO,
-        BUSCANDO_ASIENTO, ASIENTO_OCUPADO, VIENDO_PARTIDO,
-        CAMINANDO_AL_BANO, EN_FILA_BANO, EN_BANO,
-        CAMINANDO_A_TIENDA, EN_FILA_CAJA, PAGANDO, ESPERANDO_COMIDA, REGRESANDO_A_ASIENTO, COMIENDO,
-        SALIENDO, FUERA
+    /** Estados del dominio; el color agrupa por actividad (entrada, partido, baño, tienda...). */
+    public enum Estado implements EstadoAgente {
+        CAMINANDO_A_ENTRADA(144, 164, 174),
+        EN_FILA_TORNIQUETE(96, 125, 139),
+        SIENDO_REVISADO(253, 216, 53),
+        RECHAZADO(229, 57, 53),
+        BUSCANDO_ASIENTO(129, 212, 250),
+        ASIENTO_OCUPADO(183, 28, 28),
+        VIENDO_PARTIDO(30, 136, 229),
+        CAMINANDO_AL_BANO(206, 147, 216),
+        EN_FILA_BANO(171, 71, 188),
+        EN_BANO(106, 27, 154),
+        CAMINANDO_A_TIENDA(255, 204, 128),
+        EN_FILA_CAJA(255, 152, 0),
+        PAGANDO(230, 81, 0),
+        ESPERANDO_COMIDA(255, 193, 7),
+        REGRESANDO_A_ASIENTO(77, 208, 225),
+        COMIENDO(124, 179, 66),
+        SALIENDO(189, 189, 189),
+        FUERA(117, 117, 117);
+
+        private final Color color;
+
+        Estado(int r, int g, int b) {
+            this.color = new Color(r, g, b);
+        }
+
+        @Override
+        public Color color() {
+            return color;
+        }
     }
 
     /** Al llegar a este nivel (0–100) va al baño o a comprar comida. */
@@ -82,10 +109,11 @@ public class Aficionado extends Agente {
      */
     private void verPartido(Asiento asiento) throws InterruptedException {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        int rondas = rnd.nextInt(4, 9);
+        Config config = planta.getConfig();
+        long rondas = config.getRondas().alAzar();
         for (int i = 0; i < rondas; i++) {
             cambiarEstado(Estado.VIENDO_PARTIDO);
-            Tiempo.dormir(rnd.nextLong(3000, 6000));
+            Tiempo.dormir(config.tiempo(Config.RONDA).alAzar());
             vejiga += rnd.nextInt(10, 35);
             hambre += rnd.nextInt(5, 30);
 
@@ -98,7 +126,7 @@ public class Aficionado extends Agente {
                 hambre = 0;
                 regresarAlAsiento(asiento);
                 cambiarEstado(Estado.COMIENDO);
-                Tiempo.dormir(rnd.nextLong(3000, 5000));
+                Tiempo.dormir(config.tiempo(Config.COMER).alAzar());
             }
         }
     }
@@ -114,7 +142,7 @@ public class Aficionado extends Agente {
         try {
             caminarHacia(planta.getCubiculo(cubiculo));
             cambiarEstado(Estado.EN_BANO);
-            Tiempo.dormir(ThreadLocalRandom.current().nextLong(2000, 4000));
+            Tiempo.dormir(planta.getConfig().tiempo(Config.BANO).alAzar());
         } finally {
             bano.salir(cubiculo);
         }
@@ -131,7 +159,7 @@ public class Aficionado extends Agente {
         try {
             caminarHacia(planta.getPuntoCaja(caja));
             cambiarEstado(Estado.PAGANDO);
-            Tiempo.dormir(ThreadLocalRandom.current().nextLong(1000, 2000));
+            Tiempo.dormir(planta.getConfig().tiempo(Config.PAGO).alAzar());
         } finally {
             cajas.salir(caja);
         }
@@ -180,19 +208,7 @@ public class Aficionado extends Agente {
     }
 
     @Override
-    public Color getColor() {
-        Enum<?> estado = getEstado();
-        if (estado == Estado.RECHAZADO || estado == Estado.ASIENTO_OCUPADO) {
-            return new Color(229, 57, 53);
-        }
-        if (estado == Estado.COMIENDO) {
-            return new Color(124, 179, 66);
-        }
-        return new Color(66, 165, 245);
-    }
-
-    @Override
-    protected Enum<?> estadoFinal() {
+    protected EstadoAgente estadoFinal() {
         return Estado.FUERA;
     }
 }

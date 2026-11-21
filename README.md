@@ -44,6 +44,18 @@ java -jar estadio.jar --piso=3 --puerto=5003 --vecinos=localhost:5001
 java -jar estadio.jar --piso=1 --editor      # editor del escenario (coordenadas de resources/escenarios/s1.txt)
 ```
 
+Al arrancar aparece la **ventana de configuración**, prellenada con los argumentos. Ahí se eligen:
+- el piso y los vecinos;
+- cuántos agentes se crean;
+- la capacidad de cada búfer, como "m de n";
+- todos los tiempos.
+
+La ventana también muestra el **comando equivalente** para repetir la misma configuración sin abrirla:
+
+```bash
+java -jar estadio.jar --piso=1 --banos=2 --cocineros=0 --sin-dialogo
+```
+
 ## Documentación
 
 - [`PLAN.md`](PLAN.md): plan del proyecto, arquitectura y scope por entregas.

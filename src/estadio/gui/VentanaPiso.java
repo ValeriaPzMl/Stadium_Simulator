@@ -14,6 +14,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
@@ -61,12 +62,24 @@ public class VentanaPiso extends JFrame {
         plano.add(panel, BorderLayout.CENTER);
         plano.add(barra, BorderLayout.SOUTH);
 
+        // Lado derecho: Hilos (resumen por estado + tabla por agente), Tablero de búferes y Leyenda
         TablaEstados tabla = new TablaEstados(registro);
-        JScrollPane scrollTabla = new JScrollPane(tabla);
-        scrollTabla.setPreferredSize(new Dimension(420, 600));
+        ResumenHilos resumen = new ResumenHilos(registro);
+        TableroBuferes tablero = new TableroBuferes(registro, capa, config.getPiso());
+        JScrollPane scrollResumen = new JScrollPane(resumen);
+        scrollResumen.setPreferredSize(new Dimension(500, 120));
+        JPanel hilos = new JPanel(new BorderLayout(0, 6));
+        hilos.add(scrollResumen, BorderLayout.NORTH);
+        hilos.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
-        JSplitPane division = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, plano, scrollTabla);
-        division.setResizeWeight(0.75);
+        JTabbedPane pestanas = new JTabbedPane();
+        pestanas.addTab("Hilos", hilos);
+        pestanas.addTab("Tablero", tablero);
+        pestanas.addTab("Leyenda", new JScrollPane(new PanelLeyenda()));
+        pestanas.setPreferredSize(new Dimension(600, 600));
+
+        JSplitPane division = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, plano, pestanas);
+        division.setResizeWeight(0.7);
 
         JPanel contenido = new JPanel(new BorderLayout());
         contenido.add(titulo, BorderLayout.NORTH);
@@ -80,6 +93,8 @@ public class VentanaPiso extends JFrame {
         } else {
             new Timer(MS_TABLA, e -> {
                 tabla.refrescar();
+                resumen.refrescar();
+                tablero.refrescar();
                 barra.setText(capa.resumen());
             }).start();
         }

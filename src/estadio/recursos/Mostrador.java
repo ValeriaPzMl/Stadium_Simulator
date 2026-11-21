@@ -15,6 +15,9 @@ import estadio.comun.Bitacora;
  */
 public class Mostrador {
 
+    /** Máximo de K que se puede configurar ("m de n" en la ventana). */
+    public static final int MAXIMO = 20;
+
     private final int capacidad;
 
     // Todo lo siguiente está protegido por el candado del objeto (synchronized)

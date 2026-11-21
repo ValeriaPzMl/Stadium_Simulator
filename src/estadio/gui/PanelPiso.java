@@ -111,9 +111,12 @@ public class PanelPiso extends JPanel {
             }
             int cx = (int) a.getX();
             int cy = (int) a.getY();
+            // Relleno = estado del agente; borde = estado del hilo (WAITING rojo, BLOCKED magenta)
+            Thread.State hilo = a.getState();
             g2.setColor(a.getColor());
             g2.fillOval(cx - RADIO, cy - RADIO, RADIO * 2, RADIO * 2);
-            g2.setColor(Color.BLACK);
+            g2.setColor(ColoresHilo.borde(hilo));
+            g2.setStroke(ColoresHilo.trazo(hilo));
             g2.drawOval(cx - RADIO, cy - RADIO, RADIO * 2, RADIO * 2);
             g2.setColor(TEXTO);
             g2.drawString(String.valueOf(a.getIdAgente()), cx + RADIO + 2, cy + 5);

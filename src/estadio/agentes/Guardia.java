@@ -1,5 +1,6 @@
 package estadio.agentes;
 
+import estadio.comun.Config;
 import estadio.comun.Punto;
 import estadio.comun.Tiempo;
 import estadio.pisos.PlantaBaja;
@@ -15,19 +16,34 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class Guardia extends Agente {
 
-    public enum Estado { CAMINANDO_A_PUESTO, ESPERANDO_AFICIONADO, REVISANDO_BOLETO, DESCANSANDO, FUERA }
+    public enum Estado implements EstadoAgente {
+        CAMINANDO_A_PUESTO(97, 97, 97),
+        ESPERANDO_AFICIONADO(33, 33, 33),
+        REVISANDO_BOLETO(121, 85, 72),
+        DESCANSANDO(188, 170, 164),
+        FUERA(117, 117, 117);
 
-    /** Tiempo máximo de espera antes de pasar a la zona de decisión. */
-    private static final long ESPERA_MAXIMA_MS = 5000;
-    private static final double PROBABILIDAD_DESCANSO = 0.3;
+        private final Color color;
+
+        Estado(int r, int g, int b) {
+            this.color = new Color(r, g, b);
+        }
+
+        @Override
+        public Color color() {
+            return color;
+        }
+    }
 
     private final PlantaBaja planta;
+    private final Config config;
     private final Torniquetes torniquetes;
     private final Punto puesto;
 
     public Guardia(PlantaBaja planta, Punto puesto) {
         super(planta.getEscenario(), planta.getCaseta(), Estado.CAMINANDO_A_PUESTO);
         this.planta = planta;
+        this.config = planta.getConfig();
         this.torniquetes = planta.getTorniquetes();
         this.puesto = puesto;
     }
@@ -38,11 +54,11 @@ public class Guardia extends Agente {
         caminarA(puesto);
         while (true) {
             cambiarEstado(Estado.ESPERANDO_AFICIONADO);
-            Solicitud solicitud = torniquetes.esperarAficionado(ESPERA_MAXIMA_MS);
+            Solicitud solicitud = torniquetes.esperarAficionado(config.tiempo(Config.ESPERA_GUARDIA).alAzar());
 
             if (solicitud == null) {
                 // Zona de decisión: nadie llegó a tiempo
-                if (rnd.nextDouble() < PROBABILIDAD_DESCANSO) {
+                if (rnd.nextInt(100) < config.getProbDescansoGuardia()) {
                     descansar();
                 }
                 continue;
@@ -50,7 +66,7 @@ public class Guardia extends Agente {
 
             cambiarEstado(Estado.REVISANDO_BOLETO);
             caminarHacia(planta.getPuntoRevision(solicitud.getLugar()));
-            Tiempo.dormir(rnd.nextLong(800, 1600));
+            Tiempo.dormir(config.tiempo(Config.REVISION).alAzar());
             torniquetes.darVeredicto(solicitud, solicitud.getBoleto().autentico());
             caminarHacia(puesto);
         }
@@ -59,7 +75,7 @@ public class Guardia extends Agente {
     private void descansar() throws InterruptedException {
         cambiarEstado(Estado.DESCANSANDO);
         caminarA(planta.getCaseta());
-        Tiempo.dormir(ThreadLocalRandom.current().nextLong(4000, 8000));
+        Tiempo.dormir(config.tiempo(Config.DESCANSO_GUARDIA).alAzar());
         cambiarEstado(Estado.CAMINANDO_A_PUESTO);
         caminarA(puesto);
     }
@@ -70,12 +86,7 @@ public class Guardia extends Agente {
     }
 
     @Override
-    public Color getColor() {
-        return new Color(33, 33, 33);
-    }
-
-    @Override
-    protected Enum<?> estadoFinal() {
+    protected EstadoAgente estadoFinal() {
         return Estado.FUERA;
     }
 }
