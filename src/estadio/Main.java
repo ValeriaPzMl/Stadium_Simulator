@@ -9,15 +9,22 @@ import estadio.comun.Piso;
 import estadio.comun.Tiempo;
 import estadio.gui.Capa;
 import estadio.gui.CapaEditor;
+import estadio.gui.CapaGradaAlta;
 import estadio.gui.CapaPlantaBaja;
 import estadio.gui.DialogoConfig;
 import estadio.gui.VentanaPiso;
+import estadio.pisos.GradaAlta;
 import estadio.pisos.PlantaBaja;
+import estadio.red.ClienteRed;
+import estadio.red.ReceptorAgentes;
+import estadio.red.ServidorRed;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import java.awt.Graphics2D;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.ServerSocket;
 
 /**
  * Punto de entrada de cada servidor del estadio.
@@ -56,17 +63,38 @@ public final class Main {
 
         Escenario escenario;
         PlantaBaja plantaBaja = null;
+        ClienteRed cliente = null;
+        ServidorRed servidor = null;
         Capa capa;
         try {
             escenario = Escenario.cargar(config.getPiso());
             Bitacora.info("Escenario " + escenario);
             if (config.isEditor()) {
                 capa = new CapaEditor(escenario);
-            } else if (config.getPiso() == Piso.PLANTA_BAJA) {
-                plantaBaja = new PlantaBaja(config, escenario);
-                capa = new CapaPlantaBaja(plantaBaja);
             } else {
-                capa = enConstruccion(config.getPiso());
+                // Red: el servidor escucha en el puerto del piso; el cliente envía a los vecinos
+                ServerSocket socket = abrirPuerto(config.getPuerto());
+                cliente = new ClienteRed(config, escenario);
+                ReceptorAgentes receptor;
+                switch (config.getPiso()) {
+                    case PLANTA_BAJA -> {
+                        plantaBaja = new PlantaBaja(config, escenario);
+                        receptor = plantaBaja;
+                        capa = new CapaPlantaBaja(plantaBaja);
+                    }
+                    case GRADA_ALTA -> {
+                        GradaAlta grada = new GradaAlta(config, escenario, registro, cliente);
+                        receptor = grada;
+                        capa = new CapaGradaAlta(grada);
+                    }
+                    default -> {
+                        receptor = dto -> {
+                            throw new IllegalStateException("S2 todavía no recibe aficionados (Fase 6)");
+                        };
+                        capa = enConstruccion(config.getPiso());
+                    }
+                }
+                servidor = new ServidorRed(socket, config.getPiso(), receptor, escenario);
             }
         } catch (EscenarioException | IllegalArgumentException e) {
             terminarConError(e.getMessage(), interactivo);
@@ -79,7 +107,20 @@ public final class Main {
         SwingUtilities.invokeLater(() -> new VentanaPiso(configFinal, registro, escenarioFinal, capa).setVisible(true));
 
         if (plantaBaja != null) {
-            plantaBaja.iniciar(registro);
+            plantaBaja.iniciar(registro, cliente);
+        }
+        if (servidor != null) {
+            registro.registrarYArrancar(servidor);
+            registro.registrarYArrancar(cliente);
+        }
+    }
+
+    private static ServerSocket abrirPuerto(int puerto) {
+        try {
+            return new ServerSocket(puerto);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("No se pudo abrir el puerto " + puerto
+                    + " (¿ya hay otro servidor corriendo en él?): " + e.getMessage());
         }
     }
 

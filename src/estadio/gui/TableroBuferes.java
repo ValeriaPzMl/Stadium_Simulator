@@ -53,7 +53,7 @@ public class TableroBuferes extends JPanel {
             new Planeado("Mc", "Montacargas", Piso.PALCOS, FilaBufer.BUFER_1, "1 de 1", 6));
 
     /** Última fase terminada: lo planeado hasta aquí ya existe en el servidor de su piso. */
-    private static final int ULTIMA_FASE = 3;
+    private static final int ULTIMA_FASE = 4;
 
     private final RegistroAgentes registro;
     private final Capa capa;

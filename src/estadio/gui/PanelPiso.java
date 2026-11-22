@@ -106,7 +106,7 @@ public class PanelPiso extends JPanel {
     private void dibujarAgentes(Graphics2D g2) {
         g2.setFont(g2.getFont().deriveFont(Font.BOLD, 14f));
         for (Agente a : registro.todos()) {
-            if (a.getState() == Thread.State.TERMINATED) {
+            if (!a.esVisible() || a.getState() == Thread.State.TERMINATED) {
                 continue;
             }
             int cx = (int) a.getX();

@@ -6,6 +6,7 @@ import estadio.recursos.Asientos;
 import estadio.recursos.Mostrador;
 import estadio.recursos.Torniquetes;
 import estadio.recursos.ZonaConCupo;
+import estadio.red.ClienteRed;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -101,12 +102,23 @@ public class CapaPlantaBaja implements Capa {
                         + "<br>Baño · fila: <b>%d</b> &nbsp; adentro: <b>%d/%d</b> (máx %d)"
                         + " &nbsp;·&nbsp; Cajas · fila: <b>%d</b> &nbsp; pagando: <b>%d/%d</b>"
                         + " &nbsp;·&nbsp; Mostrador: <b>%d/%d</b> porciones &nbsp; esperando comida: <b>%d</b>"
-                        + " &nbsp; cocineros esperando espacio: <b>%d</b> &nbsp; vendidas: <b>%d</b></html>",
+                        + " &nbsp; cocineros esperando espacio: <b>%d</b> &nbsp; vendidas: <b>%d</b>%s</html>",
                 t.getEnFila(), t.getEnRevision(), t.getCapacidad(), t.getMaximoEnRevision(),
                 t.getAceptados(), t.getRechazados(), a.getSentados(), a.getCantidad(), a.getConflictos(),
                 b.getEnFila(), b.getEnUso(), b.getCapacidad(), b.getMaximoEnUso(),
                 c.getEnFila(), c.getEnUso(), c.getCapacidad(),
-                m.getPorciones(), m.getCapacidad(), m.getEsperandoComida(), m.getEsperandoEspacio(), m.getVendidas());
+                m.getPorciones(), m.getCapacidad(), m.getEsperandoComida(), m.getEsperandoEspacio(), m.getVendidas(),
+                lineaRed());
+    }
+
+    private String lineaRed() {
+        ClienteRed c = planta.getCliente();
+        if (c == null) {
+            return "<br>Red · sin vecinos (todos los boletos son General)";
+        }
+        return String.format("<br>Red · %s &nbsp;·&nbsp; subieron a S3: <b>%d</b> &nbsp;·&nbsp; regresaron de S3: <b>%d</b>"
+                        + " &nbsp;·&nbsp; en tránsito: <b>%d</b> &nbsp;·&nbsp; reintentos: <b>%d</b>",
+                c.estadoVecinos(), planta.getSubieron(), planta.getRegresaron(), c.getEnTransito(), c.getReintentos());
     }
 
     @Override
@@ -117,7 +129,7 @@ public class CapaPlantaBaja implements Capa {
         ZonaConCupo c = planta.getCajas();
         Mostrador m = planta.getMostrador();
         String s1 = "S1";
-        return List.of(
+        List<FilaBufer> filas = new java.util.ArrayList<>(List.of(
                 new FilaBufer("T", "Torniquetes", s1, FilaBufer.BUFER_M,
                         mDeN(t.getCapacidad(), planta.getEscenario().lista("torniquete").size()),
                         String.valueOf(t.getEnFila()), String.valueOf(t.getEnRevision()),
@@ -135,7 +147,18 @@ public class CapaPlantaBaja implements Capa {
                 new FilaBufer("M", "Mostrador", s1, FilaBufer.PROD_CONS, mDeN(m.getCapacidad(), Mostrador.MAXIMO),
                         String.valueOf(m.getEsperandoComida()), m.getPorciones() + " porciones",
                         m.getEsperandoEspacio() + " cocineros esperando espacio · vendidas " + m.getVendidas()
-                                + " · wait/notifyAll"));
+                                + " · wait/notifyAll")));
+        if (planta.getCliente() != null) {
+            filas.add(filaColaSalida(planta.getCliente(), s1));
+        }
+        return filas;
+    }
+
+    /** La cola de salida de la red: los aficionados producen, el ClienteRed consume. */
+    static FilaBufer filaColaSalida(ClienteRed c, String piso) {
+        return new FilaBufer("Rx", "Cola de salida (red)", piso, FilaBufer.PROD_CONS, "sin límite",
+                String.valueOf(c.getEnCola()), String.valueOf(c.getEnTransito() - c.getEnCola()),
+                "entregados " + c.getEnviados() + " · reintentos " + c.getReintentos() + " · LinkedBlockingQueue");
     }
 
     private static String mDeN(int m, int n) {

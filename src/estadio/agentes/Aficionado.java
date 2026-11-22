@@ -2,15 +2,17 @@ package estadio.agentes;
 
 import estadio.comun.Bitacora;
 import estadio.comun.Boleto;
+import estadio.comun.Config;
+import estadio.comun.Piso;
 import estadio.comun.Punto;
 import estadio.comun.Tiempo;
+import estadio.comun.TipoBoleto;
 import estadio.pisos.PlantaBaja;
+import estadio.red.AgenteDTO;
 import estadio.recursos.Asientos.Asiento;
 import estadio.recursos.BanoGeneral;
 import estadio.recursos.Cajas;
 import estadio.recursos.Torniquetes;
-
-import estadio.comun.Config;
 
 import java.awt.Color;
 import java.util.concurrent.ThreadLocalRandom;
@@ -39,6 +41,9 @@ public class Aficionado extends Agente {
         PAGANDO(230, 81, 0),
         ESPERANDO_COMIDA(255, 193, 7),
         REGRESANDO_A_ASIENTO(77, 208, 225),
+        CAMINANDO_A_ESCALERA(161, 136, 127),
+        EN_ESCALERA(93, 64, 55),
+        MIGRADO(176, 190, 197),
         COMIENDO(124, 179, 66),
         SALIENDO(189, 189, 189),
         FUERA(117, 117, 117);
@@ -62,6 +67,10 @@ public class Aficionado extends Agente {
     private final PlantaBaja planta;
     private int vejiga;
     private int hambre;
+    /** Viene de regreso de otro piso: solo camina de la escalera a la salida. */
+    private final boolean deRegreso;
+    /** Ya se fue a otro piso: su hilo termina aquí, pero la persona sigue en el estadio. */
+    private boolean migrado;
 
     public Aficionado(Boleto boleto, PlantaBaja planta) {
         super(planta.getEscenario(), planta.puntoDeAparicion(), Estado.CAMINANDO_A_ENTRADA);
@@ -70,10 +79,25 @@ public class Aficionado extends Agente {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         this.vejiga = rnd.nextInt(0, 70);
         this.hambre = rnd.nextInt(0, 70);
+        this.deRegreso = false;
+    }
+
+    /** Un aficionado que regresa de otro piso por la escalera (llega por la red). */
+    public Aficionado(AgenteDTO dto, PlantaBaja planta) {
+        super(planta.getEscenario(), planta.getEscalera(), Estado.EN_ESCALERA);
+        this.boleto = dto.boleto();
+        this.planta = planta;
+        this.vejiga = dto.vejiga();
+        this.hambre = dto.hambre();
+        this.deRegreso = true;
     }
 
     @Override
     protected void vivir() throws InterruptedException {
+        if (deRegreso) {
+            salirDelEstadio();
+            return;
+        }
         caminarHacia(planta.puntoEnFila());
 
         if (!pasarTorniquete()) {
@@ -81,6 +105,11 @@ public class Aficionado extends Agente {
             Bitacora.info("Rechazado, boleto " + boleto);
             caminarHacia(planta.puntoEnFila()); // se regresa por donde vino
             salirDelEstadio();
+            return;
+        }
+
+        if (boleto.tipo() == TipoBoleto.POPULAR) {
+            subirAOtroPiso(Piso.GRADA_ALTA);
             return;
         }
 
@@ -168,6 +197,20 @@ public class Aficionado extends Agente {
         planta.getMostrador().tomar(); // WAITING si no hay porciones
     }
 
+    /**
+     * Camina a la escalera, sube y deja sus datos en la cola de salida de la red. Su hilo termina
+     * aquí; el servidor del otro piso crea uno nuevo con los mismos datos.
+     */
+    private void subirAOtroPiso(Piso destino) throws InterruptedException {
+        cambiarEstado(Estado.CAMINANDO_A_ESCALERA);
+        caminarA(planta.getEscalera());
+        cambiarEstado(Estado.EN_ESCALERA);
+        Tiempo.dormir(planta.getConfig().tiempo(Config.ESCALERA).alAzar());
+        planta.migrar(new AgenteDTO(boleto, vejiga, hambre, Piso.PLANTA_BAJA, getIdAgente()), destino);
+        migrado = true;
+        Bitacora.info("Aficionado folio " + boleto.folio() + " sube a " + destino.getNombre());
+    }
+
     private void regresarAlAsiento(Asiento asiento) throws InterruptedException {
         cambiarEstado(Estado.REGRESANDO_A_ASIENTO);
         caminarA(asiento.getPosicion());
@@ -209,6 +252,6 @@ public class Aficionado extends Agente {
 
     @Override
     protected EstadoAgente estadoFinal() {
-        return Estado.FUERA;
+        return migrado ? Estado.MIGRADO : Estado.FUERA;
     }
 }

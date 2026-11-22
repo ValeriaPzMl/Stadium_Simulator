@@ -34,7 +34,9 @@ El estadio está **distribuido en 3 servidores**, uno por piso. Los aficionados 
 
 Java 17+, Swing (gráficos), `javax.sound` (sonido), sockets TCP (comunicación entre servidores).
 
-## Ejecución (planeada)
+## Ejecución
+
+En una sola computadora se abren 3 terminales con `localhost` y un puerto distinto por piso. En 3 PCs se cambia `localhost` por la IP de cada una; las PCs deben estar en la misma red y tener esos puertos abiertos en el firewall.
 
 ```bash
 # En cada computadora (o en 3 terminales locales)

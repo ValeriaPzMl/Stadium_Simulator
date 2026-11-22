@@ -55,6 +55,11 @@ public abstract class Agente extends Thread {
         return estado.color();
     }
 
+    /** Si se dibuja en el plano (los agentes de red no tienen lugar físico). */
+    public boolean esVisible() {
+        return true;
+    }
+
     /** Estado del dominio que se muestra cuando el hilo ya terminó. */
     protected abstract EstadoAgente estadoFinal();
 

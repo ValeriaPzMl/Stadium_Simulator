@@ -1,6 +1,6 @@
 # Escenario de S3 – Grada alta. Coordenadas en pixeles de s3.png (1920×1080).
 # Formato: PLAN.md, sección "Fase 2.5". Editor: java -jar estadio.jar --piso=3 --editor
-# Los asientos populares, la fila de la tienda y los pasillos se agregan en la Fase 5.
+# Fase 4: escalera, zona temporal y pasillos. Asientos, baño y tienda en uso: Fase 5.
 
 imagen s3.png
 
@@ -11,3 +11,28 @@ lista bano     1605 665
 lista mostrador  838 185
 lista mostrador  960 185
 lista mostrador 1082 185
+
+# Zona temporal donde ven el partido los populares mientras no hay asientos (Fase 4).
+# En la Fase 5 se cambia por líneas "asientos" en los anillos.
+area zona_popular 700 240 1220 330
+
+# ---------------------------------------------------------------- pasillos
+# Anillo por el pasillo gris entre las gradas (509..1410 × 229..850) y el muro exterior
+nodo iz_centro  413 540
+nodo iz_arriba  413 380
+nodo iz_abajo   413 700
+nodo esq_si     425 185
+nodo ar_izq     640 195
+nodo ar_centro  960 195
+nodo ar_der    1280 195
+nodo esq_sd    1495 185
+nodo de_arriba 1506 380
+nodo de_centro 1506 540
+nodo de_abajo  1506 700
+nodo esq_ad    1495 915
+nodo ab_der    1280 916
+nodo ab_centro  960 916
+nodo ab_izq     640 916
+nodo esq_ai     425 915
+conexion iz_centro iz_arriba esq_si ar_izq ar_centro ar_der esq_sd de_arriba de_centro de_abajo esq_ad
+conexion esq_ad ab_der ab_centro ab_izq esq_ai iz_abajo iz_centro

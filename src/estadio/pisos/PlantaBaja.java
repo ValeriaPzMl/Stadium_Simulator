@@ -10,6 +10,7 @@ import estadio.comun.Boleto;
 import estadio.comun.Config;
 import estadio.comun.Escenario;
 import estadio.comun.EscenarioException;
+import estadio.comun.Piso;
 import estadio.comun.Punto;
 import estadio.comun.Tiempo;
 import estadio.comun.TipoBoleto;
@@ -18,11 +19,15 @@ import estadio.recursos.BanoGeneral;
 import estadio.recursos.Cajas;
 import estadio.recursos.Mostrador;
 import estadio.recursos.Torniquetes;
+import estadio.red.AgenteDTO;
+import estadio.red.ClienteRed;
+import estadio.red.ReceptorAgentes;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Servidor S1: cancha, gradas bajas, la única entrada del estadio, baño general y tienda.
@@ -31,7 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>Todas las posiciones salen de {@code resources/escenarios/s1.txt}; si falta alguna, el
  * constructor falla con un mensaje que dice qué línea agregar.
  */
-public class PlantaBaja {
+public class PlantaBaja implements ReceptorAgentes {
 
     private final Config config;
     private final Escenario escenario;
@@ -56,6 +61,13 @@ public class PlantaBaja {
     private final Area recoger;
     private final List<Punto> cocinas;
     private final Punto indicadorPorciones;
+    private final Punto escalera;
+
+    // Red (null si este servidor corre sin vecinos, p. ej. en las pruebas)
+    private ClienteRed cliente;
+    private volatile RegistroAgentes registro;
+    private final AtomicInteger subieron = new AtomicInteger();
+    private final AtomicInteger regresaron = new AtomicInteger();
 
     public PlantaBaja(Config config, Escenario escenario) {
         this.config = config;
@@ -94,6 +106,7 @@ public class PlantaBaja {
         this.recoger = escenario.area("recoger");
         this.cocinas = escenario.lista("cocina");
         this.indicadorPorciones = escenario.punto("porciones");
+        this.escalera = escenario.punto("escalera");
 
         this.torniquetes = new Torniquetes(t);
         this.asientos = new Asientos(escenario.getAsientos());
@@ -111,8 +124,18 @@ public class PlantaBaja {
         return List.copyOf(lista.subList(0, n));
     }
 
-    /** Arranca a los guardias y al hilo que genera las llegadas. */
+    /** Arranca sin red: todos los boletos son General. */
     public void iniciar(RegistroAgentes registro) {
+        iniciar(registro, null);
+    }
+
+    /**
+     * Arranca a guardias y cocineros y al hilo que genera las llegadas. Con {@code cliente}, los
+     * boletos Popular suben a S3 por la red.
+     */
+    public void iniciar(RegistroAgentes registro, ClienteRed cliente) {
+        this.registro = registro;
+        this.cliente = cliente;
         for (int i = 0; i < config.getGuardias(); i++) {
             // Si hay más guardias que puestos, los que sobran se forman detrás (hacia arriba)
             Punto puesto = puestosGuardia.get(i % puestosGuardia.size())
@@ -156,7 +179,17 @@ public class PlantaBaja {
 
         List<Boleto> boletos = new ArrayList<>();
         List<Integer> asignados = new ArrayList<>();
+        boolean hayRed = cliente != null && !config.getVecinos().isEmpty();
+        if (!hayRed && config.getPorcentajePopulares() > 0) {
+            Bitacora.info("Sin vecinos: todos los boletos son General");
+        }
         for (int folio = 1; folio <= config.getAficionados(); folio++) {
+            if (hayRed && rnd.nextInt(100) < config.getPorcentajePopulares()) {
+                // Popular: su asiento estará en S3 (Fase 5); algunos también son falsos
+                boolean falso = rnd.nextInt(100) < config.getPorcentajeFalsos();
+                boletos.add(new Boleto(folio, TipoBoleto.POPULAR, -1, !falso));
+                continue;
+            }
             int dado = rnd.nextInt(100);
             boolean falso = dado < config.getPorcentajeFalsos();
             boolean duplicado = !falso && dado < config.getPorcentajeFalsos() + config.getPorcentajeDuplicados()
@@ -258,5 +291,43 @@ public class PlantaBaja {
 
     public Punto getIndicadorPorciones() {
         return indicadorPorciones;
+    }
+
+    public Punto getEscalera() {
+        return escalera;
+    }
+
+    // ------------------------------------------------------------ red
+
+    /** Un aficionado deja este piso: sus datos van a la cola de salida de la red. */
+    public void migrar(AgenteDTO dto, Piso destino) {
+        if (cliente == null) {
+            throw new IllegalStateException("S1 no tiene red y llegó un boleto " + dto.boleto().tipo());
+        }
+        subieron.incrementAndGet();
+        cliente.enviar(destino, dto);
+    }
+
+    /** Llega por la red un aficionado que regresa de otro piso: camina a la salida. */
+    @Override
+    public void recibir(AgenteDTO dto) {
+        RegistroAgentes r = registro;
+        if (r == null) {
+            throw new IllegalStateException("S1 todavía no arranca");
+        }
+        r.registrarYArrancar(new Aficionado(dto, this));
+        regresaron.incrementAndGet();
+    }
+
+    public ClienteRed getCliente() {
+        return cliente;
+    }
+
+    public int getSubieron() {
+        return subieron.get();
+    }
+
+    public int getRegresaron() {
+        return regresaron.get();
     }
 }

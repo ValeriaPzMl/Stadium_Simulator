@@ -56,6 +56,7 @@ public class DialogoConfig extends JDialog {
     private final JSpinner cocineros = entero(2, 0, 20);
     private final JSpinner falsos = entero(10, 0, 100);
     private final JSpinner duplicados = entero(5, 0, 100);
+    private final JSpinner populares = entero(30, 0, 100);
     private final JSpinner probGuardia = entero(30, 0, 100);
     private final JSpinner probCocinero = entero(10, 0, 100);
 
@@ -187,6 +188,7 @@ public class DialogoConfig extends JDialog {
         f.titulo("Boletos");
         f.renglon("% falsos", falsos, "El guardia los rechaza en el torniquete");
         f.renglon("% duplicados", duplicados, "Auténticos pero con asiento repetido: el conflicto se ve en el asiento");
+        f.renglon("% populares", populares, "Suben por la escalera y migran a S3 (necesita el vecino S3)");
         f.titulo("Zona de decisión");
         f.renglon("% descanso del guardia", probGuardia, "Si nadie llega a tiempo, probabilidad de ir a la caseta");
         f.renglon("% descanso del cocinero", probCocinero, "Después de cada porción");
@@ -270,6 +272,7 @@ public class DialogoConfig extends JDialog {
         falsos.setValue(c.getPorcentajeFalsos());
         ((SpinnerNumberModel) duplicados.getModel()).setMaximum(100 - c.getPorcentajeFalsos());
         duplicados.setValue(c.getPorcentajeDuplicados());
+        populares.setValue(c.getPorcentajePopulares());
         probGuardia.setValue(c.getProbDescansoGuardia());
         probCocinero.setValue(c.getProbDescansoCocinero());
         torniquetes.setValue(Math.min(c.getTorniquetes(), maxTorniquetes));
@@ -314,6 +317,7 @@ public class DialogoConfig extends JDialog {
         m.put("porciones", porciones.getValue().toString());
         m.put("falsos", falsos.getValue().toString());
         m.put("duplicados", duplicados.getValue().toString());
+        m.put("populares", populares.getValue().toString());
         m.put("rondas", rondasMin.getValue() + "-" + rondasMax.getValue());
         m.put("prob-descanso-guardia", probGuardia.getValue().toString());
         m.put("prob-descanso-cocinero", probCocinero.getValue().toString());
@@ -364,6 +368,7 @@ public class DialogoConfig extends JDialog {
         m.put("porciones", String.valueOf(c.getPorciones()));
         m.put("falsos", String.valueOf(c.getPorcentajeFalsos()));
         m.put("duplicados", String.valueOf(c.getPorcentajeDuplicados()));
+        m.put("populares", String.valueOf(c.getPorcentajePopulares()));
         m.put("rondas", c.getRondas().min() + "-" + c.getRondas().max());
         m.put("prob-descanso-guardia", String.valueOf(c.getProbDescansoGuardia()));
         m.put("prob-descanso-cocinero", String.valueOf(c.getProbDescansoCocinero()));
@@ -395,7 +400,7 @@ public class DialogoConfig extends JDialog {
         }
         enlazar(rondasMin, rondasMax);
 
-        JSpinner[] todos = {puerto, aficionados, guardias, cocineros, falsos, duplicados, probGuardia, probCocinero,
+        JSpinner[] todos = {puerto, aficionados, guardias, cocineros, falsos, duplicados, populares, probGuardia, probCocinero,
                 torniquetes, banos, cajas, porciones, rondasMin, rondasMax, velocidad};
         for (JSpinner s : todos) {
             s.addChangeListener(e -> actualizarComando());

@@ -4,6 +4,8 @@ import estadio.agentes.Aficionado;
 import estadio.agentes.Cocinero;
 import estadio.agentes.EstadoAgente;
 import estadio.agentes.Guardia;
+import estadio.red.ClienteRed;
+import estadio.red.ServidorRed;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -35,6 +37,8 @@ public class PanelLeyenda extends JPanel {
         seccion("Aficionado", Aficionado.Estado.values());
         seccion("Guardia", Guardia.Estado.values());
         seccion("Cocinero", Cocinero.Estado.values());
+        seccion("ServidorRed", ServidorRed.Estado.values());
+        seccion("ClienteRed", ClienteRed.Estado.values());
     }
 
     private void seccion(String tipo, EstadoAgente[] estados) {

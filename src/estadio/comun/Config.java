@@ -50,6 +50,8 @@ public final class Config {
             "Pago en la caja", new Rango(1000, 2000), false);
     public static final Temporizador COMER = new Temporizador("comer",
             "Comer en su asiento", new Rango(3000, 5000), false);
+    public static final Temporizador ESCALERA = new Temporizador("escalera",
+            "Subir o bajar la escalera", new Rango(1500, 2500), false);
     public static final Temporizador PREPARAR = new Temporizador("preparar",
             "Preparar una porción", new Rango(1500, 3000), false);
     public static final Temporizador DESCANSO_COCINERO = new Temporizador("descanso-cocinero",
@@ -57,13 +59,13 @@ public final class Config {
 
     /** En el orden en que se muestran en la ventana. */
     public static final List<Temporizador> TEMPORIZADORES = List.of(LLEGADA, ESPERA_GUARDIA, REVISION,
-            DESCANSO_GUARDIA, RONDA, BANO, PAGO, COMER, PREPARAR, DESCANSO_COCINERO);
+            DESCANSO_GUARDIA, RONDA, BANO, PAGO, COMER, ESCALERA, PREPARAR, DESCANSO_COCINERO);
 
     private static final long MAXIMO_MS = 600_000;
 
     private static final Set<String> OPCIONES = Stream.concat(
             Stream.of("piso", "puerto", "vecinos", "aficionados", "guardias", "torniquetes", "falsos", "duplicados",
-                    "velocidad", "editor", "sin-dialogo", "banos", "cajas", "cocineros", "porciones", "rondas",
+                    "velocidad", "editor", "sin-dialogo", "populares", "banos", "cajas", "cocineros", "porciones", "rondas",
                     "prob-descanso-guardia", "prob-descanso-cocinero"),
             TEMPORIZADORES.stream().map(Temporizador::clave)).collect(Collectors.toUnmodifiableSet());
 
@@ -72,7 +74,7 @@ public final class Config {
 
     public static final String USO = "Uso: java -jar estadio.jar [--piso=1|2|3] [--puerto=<n>] "
             + "[--vecinos=host:puerto,...] [--aficionados=40] [--guardias=2] [--cocineros=2] [--torniquetes=3] "
-            + "[--banos=3] [--cajas=3] [--porciones=8] [--falsos=10] [--duplicados=5] [--rondas=4-9] "
+            + "[--banos=3] [--cajas=3] [--porciones=8] [--falsos=10] [--duplicados=5] [--populares=30] [--rondas=4-9] "
             + "[--prob-descanso-guardia=30] [--prob-descanso-cocinero=10] [--velocidad=1.0] "
             + "[--<timer>=min-max en ms, timers: "
             + TEMPORIZADORES.stream().map(Temporizador::clave).collect(Collectors.joining(", "))
@@ -90,6 +92,7 @@ public final class Config {
     private final int porciones;
     private final int porcentajeFalsos;
     private final int porcentajeDuplicados;
+    private final int porcentajePopulares;
     private final Rango rondas;
     private final int probDescansoGuardia;
     private final int probDescansoCocinero;
@@ -116,6 +119,7 @@ public final class Config {
         porciones = entero(opciones, "porciones", 8, 1, Mostrador.MAXIMO);
         porcentajeFalsos = entero(opciones, "falsos", 10, 0, 100);
         porcentajeDuplicados = entero(opciones, "duplicados", 5, 0, 100 - porcentajeFalsos);
+        porcentajePopulares = entero(opciones, "populares", 30, 0, 100);
         rondas = rango(opciones, "rondas", new Rango(4, 9), 1, 100);
         probDescansoGuardia = entero(opciones, "prob-descanso-guardia", 30, 0, 100);
         probDescansoCocinero = entero(opciones, "prob-descanso-cocinero", 10, 0, 100);
@@ -293,6 +297,11 @@ public final class Config {
         return porcentajeDuplicados;
     }
 
+    /** % de boletos Popular: suben a S3 (si S1 tiene vecinos; si no, todos son General). */
+    public int getPorcentajePopulares() {
+        return porcentajePopulares;
+    }
+
     /** Cuántas rondas ve el partido cada aficionado antes de irse. */
     public Rango getRondas() {
         return rondas;
@@ -331,7 +340,7 @@ public final class Config {
                 + " | aficionados " + aficionados + " | guardias " + guardias + " | cocineros " + cocineros
                 + " | torniquetes " + torniquetes + " | baños " + banos + " | cajas " + cajas
                 + " | porciones " + porciones + " | falsos " + porcentajeFalsos + "% | duplicados "
-                + porcentajeDuplicados + "% | rondas " + rondas + " | tiempos " + tiempos
+                + porcentajeDuplicados + "% | populares " + porcentajePopulares + "% | rondas " + rondas + " | tiempos " + tiempos
                 + " | velocidad x" + velocidad + (editor ? " | EDITOR" : "");
     }
 }
